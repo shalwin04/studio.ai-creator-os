@@ -1,7 +1,7 @@
 /**
- * Chat Screen
+ * AI Chat Screen
  *
- * Fintech-inspired: Clean AI conversation with card actions
+ * Dark racing style: Matches dashboard layout with cards and bold design
  */
 
 import { useState, useRef, useCallback } from 'react';
@@ -16,6 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { colors, spacing, typography, radius, layout, shadows } from '../../../src/theme';
 
@@ -28,7 +29,7 @@ interface Message {
     value: string;
     subtitle: string;
     action: string;
-    positive?: boolean;
+    color?: string;
   };
 }
 
@@ -36,15 +37,22 @@ const INITIAL_MESSAGES: Message[] = [
   {
     id: '0',
     role: 'assistant',
-    content: "Good morning, James! I've analyzed your channel — here's your top priority for today.",
+    content: "Good morning! I've analyzed your channel — here's your top priority for today.",
     card: {
       title: 'Northwind Audio Partnership',
       value: '+$3,500',
       subtitle: 'Deal expires tomorrow',
       action: 'Review Deal',
-      positive: true,
+      color: colors.teal,
     },
   },
+];
+
+const SUGGESTIONS = [
+  { id: '1', text: 'What should I focus on?', icon: 'zap' },
+  { id: '2', text: "How's my channel doing?", icon: 'chart' },
+  { id: '3', text: 'Give me video ideas', icon: 'bulb' },
+  { id: '4', text: "What's on my schedule?", icon: 'calendar' },
 ];
 
 export default function ChatScreen() {
@@ -53,13 +61,14 @@ export default function ChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const handleSend = useCallback(() => {
-    if (!inputText.trim()) return;
+  const handleSend = useCallback((text?: string) => {
+    const messageText = text || inputText.trim();
+    if (!messageText) return;
 
     const userMessage: Message = {
       id: 'u' + Date.now(),
       role: 'user',
-      content: inputText.trim(),
+      content: messageText,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -67,34 +76,24 @@ export default function ChatScreen() {
     setIsTyping(true);
 
     setTimeout(() => {
-      const reply = generateReply(userMessage.content);
+      const reply = generateReply(messageText);
       setMessages(prev => [...prev, reply]);
       setIsTyping(false);
     }, 1200);
   }, [inputText]);
-
-  const quickFill = (text: string) => setInputText(text);
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.aiAvatar}>
-            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={1.5}>
-              <Path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z" />
+          <TouchableOpacity style={styles.headerBadge}>
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth={2}>
+              <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </Svg>
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>AI Assistant</Text>
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, isTyping && styles.statusDotTyping]} />
-              <Text style={styles.headerStatus}>
-                {isTyping ? 'Analyzing...' : 'Online'}
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.headerButton}>
+            <Text style={styles.headerBadgeText}>AI Chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.profileButton}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
               <Circle cx={12} cy={12} r={1} />
               <Circle cx={19} cy={12} r={1} />
@@ -103,49 +102,90 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Messages */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-        >
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          {isTyping && (
-            <View style={styles.typingContainer}>
-              <View style={styles.typingBubble}>
-                <View style={styles.typingDots}>
-                  <View style={[styles.typingDot, { opacity: 0.4 }]} />
-                  <View style={[styles.typingDot, { opacity: 0.6 }]} />
-                  <View style={[styles.typingDot, { opacity: 0.8 }]} />
-                </View>
-              </View>
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Input */}
         <KeyboardAvoidingView
+          style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
-          <View style={styles.inputContainer}>
-            {/* Quick Actions */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.quickActions}
-            >
-              <QuickButton icon="zap" label="Priority" onPress={() => quickFill('What should I focus on?')} />
-              <QuickButton icon="chart" label="Analytics" onPress={() => quickFill("How's my channel?")} />
-              <QuickButton icon="bulb" label="Ideas" onPress={() => quickFill('Give me video ideas')} />
-              <QuickButton icon="calendar" label="Schedule" onPress={() => quickFill("What's upcoming?")} />
-            </ScrollView>
+          {/* Messages */}
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+          >
+            {/* Welcome Card */}
+            {messages.length <= 1 && (
+              <View style={styles.welcomeCard}>
+                <LinearGradient
+                  colors={['#1E3A5F', '#0D1B2A']}
+                  style={styles.welcomeGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.welcomeIcon}>
+                    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke={colors.lime} strokeWidth={1.5}>
+                      <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                      <Path d="M8 9h8M8 13h6" />
+                    </Svg>
+                  </View>
+                  <Text style={styles.welcomeTitle}>Ask me anything</Text>
+                  <Text style={styles.welcomeSubtitle}>
+                    I can help with analytics, content planning, deals, and tasks.
+                  </Text>
+                </LinearGradient>
+              </View>
+            )}
 
-            {/* Input Row */}
+            {/* Suggestions */}
+            {messages.length <= 1 && (
+              <View style={styles.suggestionsSection}>
+                <Text style={styles.suggestionsTitle}>Suggestions</Text>
+                <View style={styles.suggestionsGrid}>
+                  {SUGGESTIONS.map((suggestion) => (
+                    <TouchableOpacity
+                      key={suggestion.id}
+                      style={styles.suggestionCard}
+                      onPress={() => handleSend(suggestion.text)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.suggestionIcon}>
+                        <SuggestionIcon type={suggestion.icon} />
+                      </View>
+                      <Text style={styles.suggestionText}>{suggestion.text}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Messages */}
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+
+            {/* Typing Indicator */}
+            {isTyping && (
+              <View style={styles.typingContainer}>
+                <View style={styles.typingAvatar}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.lime} strokeWidth={1.5}>
+                    <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                  </Svg>
+                </View>
+                <View style={styles.typingBubble}>
+                  <View style={styles.typingDots}>
+                    <View style={[styles.typingDot, { opacity: 0.4 }]} />
+                    <View style={[styles.typingDot, { opacity: 0.6 }]} />
+                    <View style={[styles.typingDot, { opacity: 0.8 }]} />
+                  </View>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Input Section */}
+          <View style={styles.inputSection}>
             <View style={styles.inputRow}>
               <View style={styles.inputWrapper}>
                 <TextInput
@@ -154,7 +194,7 @@ export default function ChatScreen() {
                   placeholderTextColor={colors.textTertiary}
                   value={inputText}
                   onChangeText={setInputText}
-                  onSubmitEditing={handleSend}
+                  onSubmitEditing={() => handleSend()}
                   returnKeyType="send"
                   multiline
                   maxLength={500}
@@ -162,10 +202,10 @@ export default function ChatScreen() {
               </View>
               <TouchableOpacity
                 style={[styles.sendButton, inputText.trim() && styles.sendButtonActive]}
-                onPress={handleSend}
+                onPress={() => handleSend()}
                 disabled={!inputText.trim()}
               >
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={inputText.trim() ? '#FFFFFF' : colors.textTertiary} strokeWidth={2}>
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={inputText.trim() ? '#000' : colors.textTertiary} strokeWidth={2}>
                   <Path d="M22 2L11 13" />
                   <Path d="M22 2l-7 20-4-9-9-4 20-7z" />
                 </Svg>
@@ -197,9 +237,9 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <View style={styles.assistantContainer}>
-      <View style={styles.assistantAvatarSmall}>
-        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={1.5}>
-          <Path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z" />
+      <View style={styles.assistantAvatar}>
+        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.lime} strokeWidth={1.5}>
+          <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
         </Svg>
       </View>
       <View style={styles.assistantBubble}>
@@ -208,14 +248,14 @@ function MessageBubble({ message }: { message: Message }) {
           <TouchableOpacity style={styles.actionCard} activeOpacity={0.8}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>{message.card.title}</Text>
-              <Text style={[styles.cardValue, message.card.positive && styles.cardValuePositive]}>
+              <Text style={[styles.cardValue, { color: message.card.color || colors.teal }]}>
                 {message.card.value}
               </Text>
             </View>
             <Text style={styles.cardSubtitle}>{message.card.subtitle}</Text>
             <View style={styles.cardAction}>
               <Text style={styles.cardActionText}>{message.card.action}</Text>
-              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth={2}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.lime} strokeWidth={2}>
                 <Path d="M5 12h14M12 5l7 7-7 7" />
               </Svg>
             </View>
@@ -227,36 +267,41 @@ function MessageBubble({ message }: { message: Message }) {
 }
 
 // ============================================
-// QUICK BUTTON
+// SUGGESTION ICON
 // ============================================
 
-function QuickButton({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.quickButton} onPress={onPress} activeOpacity={0.7}>
-      {icon === 'zap' && (
-        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth={1.5}>
+function SuggestionIcon({ type }: { type: string }) {
+  const iconColor = colors.lime;
+
+  switch (type) {
+    case 'zap':
+      return (
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth={1.5}>
           <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
         </Svg>
-      )}
-      {icon === 'chart' && (
-        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth={1.5}>
+      );
+    case 'chart':
+      return (
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth={1.5}>
           <Path d="M18 20V10M12 20V4M6 20v-6" />
         </Svg>
-      )}
-      {icon === 'bulb' && (
-        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth={1.5}>
+      );
+    case 'bulb':
+      return (
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth={1.5}>
           <Path d="M9 18h6M10 22h4M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14" />
         </Svg>
-      )}
-      {icon === 'calendar' && (
-        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth={1.5}>
+      );
+    case 'calendar':
+      return (
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth={1.5}>
           <Rect x={3} y={4} width={18} height={18} rx={2} />
           <Path d="M16 2v4M8 2v4M3 10h18" />
         </Svg>
-      )}
-      <Text style={styles.quickButtonText}>{label}</Text>
-    </TouchableOpacity>
-  );
+      );
+    default:
+      return null;
+  }
 }
 
 // ============================================
@@ -276,12 +321,12 @@ function generateReply(input: string): Message {
         value: '+$3,500',
         subtitle: 'Deal expires tomorrow · Reply needed',
         action: 'Open Deal',
-        positive: true,
+        color: colors.teal,
       },
     };
   }
 
-  if (lower.includes('channel') || lower.includes('analytic')) {
+  if (lower.includes('channel') || lower.includes('analytic') || lower.includes('doing')) {
     return {
       id: 'a' + Date.now(),
       role: 'assistant',
@@ -291,12 +336,12 @@ function generateReply(input: string): Message {
         value: '+847',
         subtitle: 'New subscribers · 89.2K views · 6.2% CTR',
         action: 'View Analytics',
-        positive: true,
+        color: colors.lime,
       },
     };
   }
 
-  if (lower.includes('idea') || lower.includes('content')) {
+  if (lower.includes('idea') || lower.includes('content') || lower.includes('video')) {
     return {
       id: 'a' + Date.now(),
       role: 'assistant',
@@ -306,7 +351,7 @@ function generateReply(input: string): Message {
         value: 'High',
         subtitle: '"AI Coding Tools" is trending with your audience',
         action: 'View Ideas',
-        positive: true,
+        color: colors.orange,
       },
     };
   }
@@ -321,6 +366,7 @@ function generateReply(input: string): Message {
         value: '2:00 PM',
         subtitle: 'Next: Film AI Review · Edit React Tips',
         action: 'Open Calendar',
+        color: colors.accent,
       },
     };
   }
@@ -344,58 +390,37 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  keyboardView: {
+    flex: 1,
+  },
 
   // Header
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 14,
     paddingHorizontal: layout.screenPadding,
-    paddingVertical: 14,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+    paddingVertical: 16,
   },
-  aiAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  statusRow: {
+  headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
+    backgroundColor: colors.lime,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: radius.full,
+    gap: 8,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.teal,
+  headerBadgeText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  statusDotTyping: {
-    backgroundColor: colors.warning,
-  },
-  headerStatus: {
-    fontSize: 13,
-    color: colors.textTertiary,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.background,
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -406,7 +431,77 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     padding: layout.screenPadding,
+    paddingBottom: 20,
     gap: 16,
+  },
+
+  // Welcome Card
+  welcomeCard: {
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  welcomeGradient: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  welcomeIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(212, 255, 0, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  welcomeTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  welcomeSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Suggestions
+  suggestionsSection: {
+    marginBottom: 16,
+  },
+  suggestionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  suggestionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  suggestionCard: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 16,
+    gap: 10,
+  },
+  suggestionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.lg,
+    backgroundColor: colors.limeMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text,
+    lineHeight: 18,
   },
 
   // User Bubble
@@ -433,11 +528,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
   },
-  assistantAvatarSmall: {
+  assistantAvatar: {
     width: 28,
     height: 28,
     borderRadius: radius.sm,
-    backgroundColor: colors.tealMuted,
+    backgroundColor: colors.limeMuted,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -458,7 +553,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: 16,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -475,10 +571,6 @@ const styles = StyleSheet.create({
   cardValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
-  },
-  cardValuePositive: {
-    color: colors.teal,
   },
   cardSubtitle: {
     fontSize: 13,
@@ -493,13 +585,22 @@ const styles = StyleSheet.create({
   cardActionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.accent,
+    color: colors.lime,
   },
 
   // Typing
   typingContainer: {
+    flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingLeft: 38,
+    gap: 10,
+  },
+  typingAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    backgroundColor: colors.limeMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   typingBubble: {
     backgroundColor: colors.surface,
@@ -518,32 +619,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textTertiary,
   },
 
-  // Input Container
-  inputContainer: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    paddingTop: 12,
-    paddingBottom: layout.tabBarHeight + layout.tabBarBottom + 12,
+  // Input Section
+  inputSection: {
     paddingHorizontal: layout.screenPadding,
-  },
-  quickActions: {
-    gap: 8,
-    marginBottom: 12,
-  },
-  quickButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    paddingTop: 12,
+    paddingBottom: layout.tabBarHeight + layout.tabBarBottom + 16,
     backgroundColor: colors.background,
-    borderRadius: radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  quickButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.text,
   },
   inputRow: {
     flexDirection: 'row',
@@ -552,7 +633,7 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.xl,
     paddingHorizontal: 18,
     paddingVertical: 14,
@@ -569,11 +650,11 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: radius.xl,
-    backgroundColor: colors.neutral300,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonActive: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.lime,
   },
 });

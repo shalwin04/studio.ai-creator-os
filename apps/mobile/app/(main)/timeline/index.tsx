@@ -1,7 +1,7 @@
 /**
- * Deals/Transactions Screen
+ * Stats/Leaderboard Screen
  *
- * Fintech-inspired: Transaction list with filters and stats
+ * Dark racing style: Rankings, stats, bold numbers
  */
 
 import { useState } from 'react';
@@ -13,49 +13,39 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { colors, spacing, typography, radius, layout, shadows } from '../../../src/theme';
 
-type FilterType = 'all' | 'active' | 'pending' | 'paid';
+type ViewType = 'videos' | 'revenue' | 'growth';
 
-interface Deal {
+interface VideoStat {
   id: string;
-  brand: string;
-  avatar: string;
-  value: string;
-  status: 'active' | 'pending' | 'paid' | 'expired';
-  date: string;
-  description?: string;
+  rank: number;
+  title: string;
+  category: string;
+  views: string;
+  categoryColor: string;
 }
 
-const SUMMARY = {
-  total: '$12,500',
-  expense: '-$1,240',
-  profit: '+$11,260',
-};
-
-const DEALS: Deal[] = [
-  { id: '1', brand: 'Northwind Audio', avatar: 'N', value: '+$3,500', status: 'pending', date: 'Expires tomorrow', description: 'Partnership deal' },
-  { id: '2', brand: 'Supabase', avatar: 'S', value: '+$3,000', status: 'active', date: 'Deliver by Sep 1', description: 'Sponsored integration' },
-  { id: '3', brand: 'Figma', avatar: 'F', value: '+$2,800', status: 'active', date: 'Draft due Monday', description: 'Tutorial sponsorship' },
-  { id: '4', brand: 'Notion', avatar: 'N', value: '+$2,200', status: 'paid', date: 'Completed Aug 15', description: 'Video mention' },
-  { id: '5', brand: 'Raycast', avatar: 'R', value: '+$4,200', status: 'pending', date: 'Sign contract', description: 'Full integration' },
-  { id: '6', brand: 'Vercel', avatar: 'V', value: '+$2,500', status: 'pending', date: 'Respond by Friday', description: 'Inbound offer' },
+const VIDEO_STATS: VideoStat[] = [
+  { id: '1', rank: 1, title: 'Building AI Apps with Claude', category: 'Tutorial', views: '524K', categoryColor: colors.teal },
+  { id: '2', rank: 2, title: 'React Native in 2024', category: 'Tutorial', views: '312K', categoryColor: colors.teal },
+  { id: '3', rank: 3, title: 'My Studio Setup Tour', category: 'Vlog', views: '287K', categoryColor: colors.orange },
+  { id: '4', rank: 4, title: 'Supabase Deep Dive', category: 'Sponsored', views: '198K', categoryColor: colors.ferrari },
+  { id: '5', rank: 5, title: 'Cursor vs Copilot', category: 'Review', views: '156K', categoryColor: colors.mclaren },
+  { id: '6', rank: 6, title: 'TypeScript Tips', category: 'Tutorial', views: '134K', categoryColor: colors.teal },
+  { id: '7', rank: 7, title: 'Year in Review', category: 'Vlog', views: '98K', categoryColor: colors.orange },
 ];
 
-const FILTERS: { id: FilterType; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'active', label: 'Active' },
-  { id: 'pending', label: 'Pending' },
-  { id: 'paid', label: 'Paid' },
+const TABS: { id: ViewType; label: string }[] = [
+  { id: 'videos', label: 'Top Videos' },
+  { id: 'revenue', label: 'Revenue' },
+  { id: 'growth', label: 'Growth' },
 ];
 
 export default function TimelineScreen() {
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-
-  const filteredDeals = activeFilter === 'all'
-    ? DEALS
-    : DEALS.filter(d => d.status === activeFilter);
+  const [activeTab, setActiveTab] = useState<ViewType>('videos');
 
   return (
     <View style={styles.container}>
@@ -67,155 +57,126 @@ export default function TimelineScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Deals</Text>
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.iconButton}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-                  <Circle cx={11} cy={11} r={8} />
-                  <Path d="M21 21l-4.35-4.35" />
-                </Svg>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-                  <Path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <Path d="M13.73 21a2 2 0 01-3.46 0" />
-                </Svg>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Summary Card */}
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <Text style={styles.summaryLabel}>Summary</Text>
-              <TouchableOpacity style={styles.periodSelector}>
-                <Text style={styles.periodText}>This Month</Text>
-                <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.headerTitle}>Video Stats</Text>
+              <TouchableOpacity style={styles.dropdownButton}>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
                   <Path d="M6 9l6 6 6-6" />
                 </Svg>
               </TouchableOpacity>
             </View>
+          </View>
 
-            {/* Circular Progress */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressRing}>
-                <Svg width={140} height={140} viewBox="0 0 140 140">
-                  <Circle
-                    cx={70}
-                    cy={70}
-                    r={60}
-                    fill="none"
-                    stroke={colors.neutral200}
-                    strokeWidth={12}
-                  />
-                  <Circle
-                    cx={70}
-                    cy={70}
-                    r={60}
-                    fill="none"
-                    stroke={colors.teal}
-                    strokeWidth={12}
-                    strokeLinecap="round"
-                    strokeDasharray={`${0.75 * 2 * Math.PI * 60} ${2 * Math.PI * 60}`}
-                    transform="rotate(-90 70 70)"
-                  />
-                </Svg>
-                <View style={styles.progressCenter}>
-                  <Text style={styles.progressLabel}>Total</Text>
-                  <Text style={styles.progressValue}>{SUMMARY.total}</Text>
+          {/* Hero Section with Gradient */}
+          <View style={styles.heroSection}>
+            <LinearGradient
+              colors={[colors.teal, colors.mercedes]}
+              style={styles.heroGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.heroContent}>
+                <Text style={styles.heroLabel}>MOST SUCCESSFUL VIDEO</Text>
+                <Text style={styles.heroTitle}>Building AI Apps</Text>
+                <View style={styles.heroStatsRow}>
+                  <Text style={styles.heroStatNumber}>524K</Text>
+                  <Text style={styles.heroStatLabel}>VIEWS</Text>
                 </View>
+                <Text style={styles.heroSubtitle}>Tutorial • Published Aug 2024</Text>
               </View>
-            </View>
-
-            {/* Summary Stats */}
-            <View style={styles.summaryStats}>
-              <View style={styles.summaryStat}>
-                <Text style={styles.summaryStatLabel}>Expense:</Text>
-                <Text style={styles.summaryStatValueNegative}>{SUMMARY.expense}</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.summaryStat}>
-                <Text style={styles.summaryStatLabel}>Profits:</Text>
-                <Text style={styles.summaryStatValuePositive}>{SUMMARY.profit}</Text>
-              </View>
-            </View>
+            </LinearGradient>
           </View>
 
-          {/* Quick Actions */}
-          <View style={styles.quickActionsRow}>
-            <QuickActionButton icon="camera" label="Sales" />
-            <QuickActionButton icon="cart" label="Sales" />
-            <QuickActionButton icon="box" label="Inventory" />
-            <QuickActionButton icon="building" label="Accounts" />
+          {/* Stats Cards */}
+          <View style={styles.statsRow}>
+            <StatCard
+              label="Most Successful Category"
+              value="08"
+              unit="VIDS"
+              subtitle="Tutorials"
+            />
+            <StatCard
+              label="Best Growth Month"
+              value="42"
+              unit="%"
+              subtitle="September"
+            />
           </View>
 
-          {/* Transactions Section */}
-          <View style={styles.transactionsSection}>
-            <View style={styles.transactionsHeader}>
-              <Text style={styles.transactionsTitle}>Transactions</Text>
-              <View style={styles.transactionsActions}>
-                <TouchableOpacity style={styles.searchButton}>
-                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
-                    <Circle cx={11} cy={11} r={8} />
-                    <Path d="M21 21l-4.35-4.35" />
-                  </Svg>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.filterIconButton}>
-                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
-                    <Path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
-                  </Svg>
-                </TouchableOpacity>
-              </View>
+          {/* Big Stat */}
+          <View style={styles.bigStatCard}>
+            <Text style={styles.bigStatLabel}>Total Watch Time</Text>
+            <View style={styles.bigStatRow}>
+              <Text style={styles.bigStatValue}>1:47:32</Text>
             </View>
+            <Text style={styles.bigStatSubtitle}>Average per video</Text>
+          </View>
 
-            {/* Filter Tabs */}
+          {/* Invite Card */}
+          <TouchableOpacity style={styles.inviteCard} activeOpacity={0.9}>
+            <LinearGradient
+              colors={[colors.lime, '#C8E600']}
+              style={styles.inviteGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.inviteContent}>
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.background} strokeWidth={2}>
+                  <Path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                </Svg>
+                <Text style={styles.inviteTitle}>share</Text>
+              </View>
+              <Text style={styles.inviteDescription}>
+                Share your stats with your audience. Let them see your growth journey.
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Rankings List */}
+          <View style={styles.rankingsSection}>
+            <Text style={styles.sectionTitle}>Video Rankings</Text>
+
+            {/* Tab Selector */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterTabs}
+              contentContainerStyle={styles.tabsContainer}
             >
-              {FILTERS.map((filter) => (
+              {TABS.map((tab) => (
                 <TouchableOpacity
-                  key={filter.id}
-                  style={[styles.filterTab, activeFilter === filter.id && styles.filterTabActive]}
-                  onPress={() => setActiveFilter(filter.id)}
+                  key={tab.id}
+                  style={[styles.tab, activeTab === tab.id && styles.tabActive]}
+                  onPress={() => setActiveTab(tab.id)}
                 >
-                  <Text style={[styles.filterTabText, activeFilter === filter.id && styles.filterTabTextActive]}>
-                    {filter.label}
+                  <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+                    {tab.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            {/* Deals List */}
-            <View style={styles.dealsList}>
-              {filteredDeals.map((deal) => (
-                <TouchableOpacity key={deal.id} style={styles.dealRow} activeOpacity={0.7}>
-                  <View style={[styles.dealAvatar, deal.status === 'paid' && styles.dealAvatarPaid]}>
-                    <Text style={[styles.dealAvatarText, deal.status === 'paid' && styles.dealAvatarTextPaid]}>
-                      {deal.avatar}
+            {/* Rankings */}
+            <View style={styles.rankingsList}>
+              {VIDEO_STATS.map((video, index) => (
+                <TouchableOpacity
+                  key={video.id}
+                  style={[styles.rankingItem, index === VIDEO_STATS.length - 1 && { borderBottomWidth: 0 }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.rankNumber}>0{video.rank}</Text>
+                  <View style={styles.rankingInfo}>
+                    <Text style={styles.rankingTitle}>{video.title}</Text>
+                    <Text style={[styles.rankingCategory, { color: video.categoryColor }]}>
+                      {video.category}
                     </Text>
                   </View>
-                  <View style={styles.dealInfo}>
-                    <Text style={styles.dealBrand}>{deal.brand}</Text>
-                    <Text style={styles.dealDate}>{deal.date}</Text>
+                  <View style={styles.rankingStats}>
+                    <Text style={styles.rankingViews}>{video.views}</Text>
+                    <Text style={styles.rankingViewsLabel}>VIEWS</Text>
                   </View>
-                  <View style={styles.dealRight}>
-                    <Text style={[
-                      styles.dealValue,
-                      deal.status === 'paid' && styles.dealValuePaid,
-                      deal.status === 'pending' && styles.dealValuePending,
-                    ]}>
-                      {deal.value}
-                    </Text>
-                    {deal.status !== 'paid' && (
-                      <View style={[styles.statusBadge, deal.status === 'pending' && styles.statusBadgePending]}>
-                        <Text style={[styles.statusText, deal.status === 'pending' && styles.statusTextPending]}>
-                          {deal.status === 'active' ? 'Active' : 'Pending'}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
+                    <Path d="M9 18l6-6-6-6" />
+                  </Svg>
                 </TouchableOpacity>
               ))}
             </View>
@@ -229,38 +190,36 @@ export default function TimelineScreen() {
   );
 }
 
-// Quick Action Button
-function QuickActionButton({ icon, label }: { icon: string; label: string }) {
+// ============================================
+// COMPONENTS
+// ============================================
+
+function StatCard({
+  label,
+  value,
+  unit,
+  subtitle,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  subtitle: string;
+}) {
   return (
-    <TouchableOpacity style={styles.quickActionButton}>
-      <View style={styles.quickActionIcon}>
-        {icon === 'camera' && (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-            <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-            <Circle cx={12} cy={13} r={4} />
-          </Svg>
-        )}
-        {icon === 'cart' && (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-            <Path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0" />
-          </Svg>
-        )}
-        {icon === 'box' && (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-            <Path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-            <Path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
-          </Svg>
-        )}
-        {icon === 'building' && (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-            <Path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01M9 18v.01" />
-          </Svg>
-        )}
+    <View style={styles.statCard}>
+      <Text style={styles.statCardLabel}>{label}</Text>
+      <View style={styles.statCardValueRow}>
+        <Text style={styles.statCardValue}>{value}</Text>
+        <Text style={styles.statCardUnit}>{unit}</Text>
       </View>
-      <Text style={styles.quickActionLabel}>{label}</Text>
-    </TouchableOpacity>
+      <Text style={styles.statCardSubtitle}>{subtitle}</Text>
+    </View>
   );
 }
+
+// ============================================
+// STYLES
+// ============================================
 
 const styles = StyleSheet.create({
   container: {
@@ -279,275 +238,246 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: 16,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.text,
     letterSpacing: -0.5,
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
+  dropdownButton: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.sm,
   },
 
-  // Summary Card
-  summaryCard: {
-    backgroundColor: colors.surface,
+  // Hero Section
+  heroSection: {
     borderRadius: radius['2xl'],
-    padding: 20,
-    marginBottom: 20,
-    ...shadows.sm,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  summaryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+  heroGradient: {
+    padding: 24,
   },
-  summaryLabel: {
-    fontSize: 18,
+  heroContent: {},
+  heroLabel: {
+    fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 0.8,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 8,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.text,
+    marginBottom: 12,
   },
-  periodSelector: {
+  heroStatsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.background,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-  },
-  periodText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  progressContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  progressRing: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressCenter: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  progressLabel: {
-    fontSize: 13,
-    color: colors.textTertiary,
-  },
-  progressValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 4,
-  },
-  summaryStats: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 20,
-  },
-  summaryStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  summaryStatLabel: {
-    fontSize: 14,
-    color: colors.textTertiary,
-  },
-  summaryStatValueNegative: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.error,
-  },
-  summaryStatValuePositive: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.teal,
-  },
-  statDivider: {
-    width: 1,
-    height: 20,
-    backgroundColor: colors.neutral300,
-  },
-
-  // Quick Actions
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  quickActionButton: {
-    alignItems: 'center',
+    alignItems: 'baseline',
     gap: 8,
+    marginBottom: 8,
   },
-  quickActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
+  heroStatNumber: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -2,
   },
-  quickActionLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-
-  // Transactions
-  transactionsSection: {
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    padding: 16,
-    ...shadows.sm,
-  },
-  transactionsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  transactionsTitle: {
+  heroStatLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: 'rgba(255,255,255,0.8)',
   },
-  transactionsActions: {
+  heroSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  // Stats Row
+  statsRow: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  searchButton: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterIconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterTabs: {
-    gap: 8,
-    marginBottom: 14,
-  },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.background,
-  },
-  filterTabActive: {
-    backgroundColor: colors.accent,
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  filterTabTextActive: {
-    color: '#FFFFFF',
-  },
-  dealsList: {
-    gap: 2,
-  },
-  dealRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
     gap: 12,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
   },
-  dealAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.tealMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dealAvatarPaid: {
-    backgroundColor: colors.neutral200,
-  },
-  dealAvatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.teal,
-  },
-  dealAvatarTextPaid: {
+  statCardLabel: {
+    fontSize: 12,
     color: colors.textSecondary,
+    marginBottom: 8,
   },
-  dealInfo: {
-    flex: 1,
+  statCardValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    marginBottom: 4,
   },
-  dealBrand: {
-    fontSize: 15,
-    fontWeight: '500',
+  statCardValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -1,
+  },
+  statCardUnit: {
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.text,
   },
-  dealDate: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  dealRight: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  dealValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.teal,
-  },
-  dealValuePaid: {
+  statCardSubtitle: {
+    fontSize: 14,
     color: colors.textSecondary,
   },
-  dealValuePending: {
-    color: colors.warning,
+
+  // Big Stat Card
+  bigStatCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 20,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
-  statusBadge: {
-    backgroundColor: colors.tealMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
+  bigStatLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 8,
   },
-  statusBadgePending: {
-    backgroundColor: colors.warningMuted,
+  bigStatRow: {
+    marginBottom: 4,
   },
-  statusText: {
-    fontSize: 10,
+  bigStatValue: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -2,
+  },
+  bigStatSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+
+  // Invite Card
+  inviteCard: {
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  inviteGradient: {
+    padding: 20,
+  },
+  inviteContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  inviteTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.background,
+    textTransform: 'lowercase',
+  },
+  inviteDescription: {
+    fontSize: 14,
+    color: colors.background,
+    opacity: 0.85,
+    lineHeight: 20,
+  },
+
+  // Rankings Section
+  rankingsSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  tabsContainer: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+  },
+  tabActive: {
+    backgroundColor: colors.surfaceElevated,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textTertiary,
+  },
+  tabTextActive: {
+    color: colors.text,
+  },
+
+  // Rankings List
+  rankingsList: {
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    padding: 4,
+  },
+  rankingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  rankNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    width: 36,
+  },
+  rankingInfo: {
+    flex: 1,
+  },
+  rankingTitle: {
+    fontSize: 15,
     fontWeight: '600',
-    color: colors.teal,
-    textTransform: 'uppercase',
+    color: colors.text,
+    marginBottom: 2,
   },
-  statusTextPending: {
-    color: colors.warning,
+  rankingCategory: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  rankingStats: {
+    alignItems: 'flex-end',
+    marginRight: 12,
+  },
+  rankingViews: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  rankingViewsLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: colors.textTertiary,
+    letterSpacing: 0.5,
   },
 });

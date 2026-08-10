@@ -1,7 +1,7 @@
 /**
  * Dashboard - Home Screen
  *
- * Fintech-inspired: Balance cards, stats, transactions
+ * Dark racing style: Hero stats, progress rings, bold typography
  */
 
 import { useState } from 'react';
@@ -12,36 +12,41 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
-import { colors, spacing, typography, radius, layout, shadows } from '../../../src/theme';
+import { colors, spacing, radius, layout, shadows } from '../../../src/theme';
 
-// Mock data
-const CHANNEL_BALANCE = {
-  totalRevenue: '$12,450',
-  monthlyChange: '+$2,340',
-  changePercent: '+18.8%',
+const USER = {
+  name: 'James',
+  fullName: 'James Chen',
 };
 
-const QUICK_STATS = [
-  { id: '1', label: 'Subscribers', value: '124.5K', change: '+847', positive: true },
-  { id: '2', label: 'Views (7d)', value: '89.2K', change: '+12%', positive: true },
-  { id: '3', label: 'Watch Time', value: '4.2K hrs', change: '+8%', positive: true },
-];
+const HERO_STATS = {
+  totalViews: '2.4M',
+  change: '+12%',
+  videos: 6,
+  hours: 42,
+};
 
-const TRANSACTIONS = [
-  { id: '1', name: 'Northwind Audio', type: 'deal', amount: '+$3,500', date: 'Expires tomorrow', avatar: 'N', pending: true },
-  { id: '2', name: 'Supabase Sponsorship', type: 'deal', amount: '+$3,000', date: 'Active deal', avatar: 'S', positive: true },
-  { id: '3', name: 'YouTube Revenue', type: 'revenue', amount: '+$1,240', date: 'This month', avatar: 'Y', positive: true },
-  { id: '4', name: 'Equipment Purchase', type: 'expense', amount: '-$450', date: 'Last week', avatar: 'E', negative: true },
+const ACTIVITY = [
+  { id: '1', type: 'video', title: 'New video published', subtitle: 'How I Built This App', time: '2h ago', color: colors.teal },
+  { id: '2', type: 'milestone', title: 'Milestone reached', subtitle: '100K subscribers!', time: '1d ago', color: colors.orange },
+  { id: '3', type: 'deal', title: 'Deal expires soon', subtitle: 'Northwind Audio · $3,500', time: '1d left', color: colors.red },
 ];
 
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -62,83 +67,73 @@ export default function DashboardScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>J</Text>
-              </View>
-              <View>
-                <Text style={styles.welcomeText}>Welcome</Text>
-                <Text style={styles.userName}>James Chen</Text>
-              </View>
+            <View>
+              <Text style={styles.greeting}>{getGreeting()},</Text>
+              <Text style={styles.userName}>{USER.name}</Text>
             </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.iconButton}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-                  <Rect x={3} y={3} width={7} height={7} rx={1} />
-                  <Rect x={14} y={3} width={7} height={7} rx={1} />
-                  <Rect x={3} y={14} width={7} height={7} rx={1} />
-                  <Rect x={14} y={14} width={7} height={7} rx={1} />
-                </Svg>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-                  <Path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <Path d="M13.73 21a2 2 0 01-3.46 0" />
-                </Svg>
-                <View style={styles.notifDot} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Text style={styles.profileInitial}>J</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Balance Card */}
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Total Revenue</Text>
-            <View style={styles.balanceRow}>
-              <Text style={styles.balanceAmount}>{CHANNEL_BALANCE.totalRevenue}</Text>
-              <TouchableOpacity style={styles.eyeButton}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
-                  <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <Circle cx={12} cy={12} r={3} />
-                </Svg>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.changeRow}>
-              <View style={styles.changeBadge}>
-                <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={2}>
-                  <Path d="M18 15l-6-6-6 6" />
-                </Svg>
-                <Text style={styles.changeText}>{CHANNEL_BALANCE.changePercent}</Text>
-              </View>
-              <Text style={styles.changeSubtext}>vs last month</Text>
-            </View>
-          </View>
-
-          {/* Quick Stats */}
-          <View style={styles.statsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Quick Stats</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.statsScroll}
+          {/* Hero Stats Card */}
+          <View style={styles.heroCard}>
+            <LinearGradient
+              colors={['#1E3A5F', '#0D1B2A']}
+              style={styles.heroGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              {QUICK_STATS.map((stat) => (
-                <View key={stat.id} style={styles.statCard}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                  <View style={styles.statChangeRow}>
-                    <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={2}>
-                      <Path d="M18 15l-6-6-6 6" />
-                    </Svg>
-                    <Text style={styles.statChange}>{stat.change}</Text>
-                  </View>
+              <Text style={styles.heroLabel}>TOTAL VIEWS THIS MONTH</Text>
+              <View style={styles.heroValueRow}>
+                <Text style={styles.heroValue}>{HERO_STATS.totalViews}</Text>
+                <View style={styles.heroTrend}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={2.5}>
+                    <Path d="M18 15l-6-6-6 6" />
+                  </Svg>
+                  <Text style={styles.heroTrendText}>{HERO_STATS.change}</Text>
                 </View>
-              ))}
-            </ScrollView>
+              </View>
+
+              {/* Mini Chart */}
+              <View style={styles.miniChart}>
+                {[0.4, 0.6, 0.5, 0.8, 0.7, 0.9, 0.75, 1, 0.85, 0.6].map((h, i) => (
+                  <View key={i} style={[styles.chartBar, { height: h * 32 }]} />
+                ))}
+              </View>
+
+              <View style={styles.heroStats}>
+                <View style={styles.heroStat}>
+                  <Text style={styles.heroStatValue}>0{HERO_STATS.videos}</Text>
+                  <Text style={styles.heroStatLabel}>Videos</Text>
+                </View>
+                <View style={styles.heroStat}>
+                  <Text style={styles.heroStatValue}>{HERO_STATS.hours}</Text>
+                  <Text style={styles.heroStatLabel}>Hours</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* Progress Section */}
+          <View style={styles.progressSection}>
+            <ProgressRing percentage={47} color={colors.accent} />
+            <View style={styles.progressStats}>
+              <ProgressStat value="11/23" label="Videos Published" />
+              <ProgressStat value="3.3M" label="Total Views" />
+              <ProgressStat value="675" label="Hours Watched" />
+            </View>
+          </View>
+
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.quickActions}>
+              <QuickAction icon="video" label="New Video" color={colors.accent} />
+              <QuickAction icon="idea" label="Add Idea" color={colors.orange} />
+              <QuickAction icon="analytics" label="Analytics" color={colors.teal} />
+              <QuickAction icon="schedule" label="Schedule" color={colors.lime} />
+            </View>
           </View>
 
           {/* AI Assistant Card */}
@@ -147,81 +142,148 @@ export default function DashboardScreen() {
             activeOpacity={0.9}
             onPress={() => router.push('/(main)/chat')}
           >
-            <View style={styles.aiIconWrap}>
-              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={1.5}>
-                <Path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z" />
-                <Circle cx={9} cy={13} r={1} fill={colors.teal} />
-                <Circle cx={15} cy={13} r={1} fill={colors.teal} />
-              </Svg>
-            </View>
-            <View style={styles.aiContent}>
-              <Text style={styles.aiTitle}>Ask AI Assistant</Text>
-              <Text style={styles.aiSubtitle}>What should I focus on today?</Text>
-            </View>
-            <View style={styles.aiArrow}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
-                <Path d="M9 18l6-6-6-6" />
-              </Svg>
-            </View>
+            <LinearGradient
+              colors={[colors.lime, '#A8E000']}
+              style={styles.aiGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.aiContent}>
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.background} strokeWidth={2}>
+                  <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </Svg>
+                <Text style={styles.aiTitle}>Ask AI Assistant</Text>
+              </View>
+              <Text style={styles.aiDescription}>
+                Get personalized insights about your channel performance.
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
 
-          {/* Transactions */}
-          <View style={styles.transactionsSection}>
+          {/* Recent Activity */}
+          <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <View style={styles.filterButtons}>
-                <TouchableOpacity style={styles.filterActive}>
-                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.surface} strokeWidth={1.5}>
-                    <Rect x={3} y={4} width={18} height={18} rx={2} />
-                    <Path d="M16 2v4M8 2v4M3 10h18" />
-                  </Svg>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.filterButton}>
-                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
-                    <Path d="M3 6h18M3 12h18M3 18h18" />
-                  </Svg>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity>
+                <Text style={styles.viewAll}>View all</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.transactionsList}>
-              {TRANSACTIONS.map((item) => (
-                <TouchableOpacity key={item.id} style={styles.transactionRow} activeOpacity={0.7}>
-                  <View style={[
-                    styles.transactionAvatar,
-                    item.pending && styles.transactionAvatarPending,
-                    item.negative && styles.transactionAvatarNegative,
-                  ]}>
-                    <Text style={[
-                      styles.transactionAvatarText,
-                      item.pending && styles.transactionAvatarTextPending,
-                      item.negative && styles.transactionAvatarTextNegative,
-                    ]}>{item.avatar}</Text>
+            <View style={styles.activityList}>
+              {ACTIVITY.map((item, index) => (
+                <View key={item.id} style={[styles.activityItem, index === ACTIVITY.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={[styles.activityIcon, { backgroundColor: `${item.color}20` }]}>
+                    <View style={[styles.activityDot, { backgroundColor: item.color }]} />
                   </View>
-                  <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionName}>{item.name}</Text>
-                    <Text style={styles.transactionDate}>{item.date}</Text>
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{item.title}</Text>
+                    <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
                   </View>
-                  <Text style={[
-                    styles.transactionAmount,
-                    item.positive && styles.transactionAmountPositive,
-                    item.negative && styles.transactionAmountNegative,
-                    item.pending && styles.transactionAmountPending,
-                  ]}>
-                    {item.amount}
-                  </Text>
-                </TouchableOpacity>
+                  <Text style={styles.activityTime}>{item.time}</Text>
+                </View>
               ))}
             </View>
           </View>
 
-          {/* Bottom padding for tab bar */}
+          {/* Bottom padding */}
           <View style={{ height: layout.tabBarHeight + layout.tabBarBottom + 40 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
+
+// ============================================
+// COMPONENTS
+// ============================================
+
+function ProgressRing({ percentage, color }: { percentage: number; color: string }) {
+  const size = 100;
+  const strokeWidth = 8;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <View style={styles.progressRing}>
+      <Svg width={size} height={size}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={colors.surfaceElevated}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <View style={styles.progressRingContent}>
+        <Text style={styles.progressRingValue}>{percentage}%</Text>
+      </View>
+    </View>
+  );
+}
+
+function ProgressStat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.progressStatItem}>
+      <Text style={styles.progressStatValue}>{value}</Text>
+      <Text style={styles.progressStatLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function QuickAction({ icon, label, color }: { icon: string; label: string; color: string }) {
+  const icons: Record<string, React.ReactNode> = {
+    video: (
+      <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Path d="M23 7l-7 5 7 5V7z" />
+        <Rect x={1} y={5} width={15} height={14} rx={2} />
+      </Svg>
+    ),
+    idea: (
+      <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Path d="M9 18h6M10 22h4" />
+        <Path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14" />
+      </Svg>
+    ),
+    analytics: (
+      <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Path d="M18 20V10M12 20V4M6 20v-6" />
+      </Svg>
+    ),
+    schedule: (
+      <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Rect x={3} y={4} width={18} height={18} rx={2} />
+        <Path d="M16 2v4M8 2v4M3 10h18" />
+      </Svg>
+    ),
+  };
+
+  return (
+    <TouchableOpacity style={styles.quickAction} activeOpacity={0.7}>
+      <View style={[styles.quickActionIcon, { backgroundColor: `${color}15` }]}>
+        {icons[icon]}
+      </View>
+      <Text style={styles.quickActionLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ============================================
+// STYLES
+// ============================================
 
 const styles = StyleSheet.create({
   container: {
@@ -243,299 +305,262 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 20,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.teal,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  welcomeText: {
-    fontSize: 13,
-    color: colors.textTertiary,
+  greeting: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 2,
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileInitial: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
   },
-  headerRight: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  notifDot: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.teal,
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
 
-  // Balance Card
-  balanceCard: {
-    backgroundColor: colors.surface,
+  // Hero Card
+  heroCard: {
     borderRadius: radius['2xl'],
-    padding: 24,
-    marginBottom: 24,
-    ...shadows.md,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  balanceLabel: {
-    fontSize: 14,
-    color: colors.textTertiary,
+  heroGradient: {
+    padding: 20,
+  },
+  heroLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
     marginBottom: 8,
   },
-  balanceRow: {
+  heroValueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+    marginBottom: 14,
+  },
+  heroValue: {
+    fontSize: 44,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -2,
+  },
+  heroTrend: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 10,
   },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: colors.text,
-    letterSpacing: -1,
+  heroTrendText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.teal,
+    marginLeft: 2,
   },
-  eyeButton: {
-    width: 32,
+  miniChart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 5,
+    marginBottom: 14,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  changeRow: {
+  chartBar: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    borderRadius: 2,
+    opacity: 0.85,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    gap: 32,
+  },
+  heroStat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 12,
   },
-  changeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.tealMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
+  heroStatValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
   },
-  changeText: {
+  heroStatLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: colors.teal,
-  },
-  changeSubtext: {
-    fontSize: 13,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
   },
 
-  // Stats Section
-  statsSection: {
-    marginBottom: 24,
+  // Progress Section
+  progressSection: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    padding: 16,
+    marginBottom: 20,
+    gap: 16,
+  },
+  progressRing: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressRingContent: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressRingValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  progressStats: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 8,
+  },
+  progressStatItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+    paddingBottom: 8,
+  },
+  progressStatValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  progressStatLabel: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+
+  // Sections
+  section: {
+    marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: colors.textTertiary,
-  },
-  statsScroll: {
-    gap: 12,
-  },
-  statCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: 16,
-    minWidth: 120,
-    ...shadows.sm,
-  },
-  statValue: {
-    fontSize: 20,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 12,
   },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    marginBottom: 8,
+  viewAll: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.accent,
   },
-  statChangeRow: {
+
+  // Quick Actions
+  quickActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
+    gap: 10,
   },
-  statChange: {
-    fontSize: 12,
+  quickAction: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 12,
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontSize: 10,
     fontWeight: '600',
-    color: colors.teal,
+    color: colors.text,
   },
 
   // AI Card
   aiCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: 16,
-    marginBottom: 24,
-    gap: 14,
-    ...shadows.sm,
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
+    marginBottom: 20,
   },
-  aiIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: colors.tealMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
+  aiGradient: {
+    padding: 18,
   },
   aiContent: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 4,
   },
   aiTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.background,
   },
-  aiSubtitle: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  aiArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+  aiDescription: {
+    fontSize: 12,
+    color: colors.background,
+    opacity: 0.85,
   },
 
-  // Transactions
-  transactionsSection: {
-    marginBottom: 24,
-  },
-  filterButtons: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  filterActive: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterButton: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+  // Activity List
+  activityList: {
     backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: radius['2xl'],
+    padding: 4,
   },
-  transactionsList: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    ...shadows.sm,
-  },
-  transactionRow: {
+  activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    gap: 14,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
   },
-  transactionAvatar: {
-    width: 44,
-    height: 44,
+  activityIcon: {
+    width: 36,
+    height: 36,
     borderRadius: radius.lg,
-    backgroundColor: colors.tealMuted,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  transactionAvatarPending: {
-    backgroundColor: colors.warningMuted,
+  activityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  transactionAvatarNegative: {
-    backgroundColor: colors.errorMuted,
-  },
-  transactionAvatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.teal,
-  },
-  transactionAvatarTextPending: {
-    color: colors.warning,
-  },
-  transactionAvatarTextNegative: {
-    color: colors.error,
-  },
-  transactionInfo: {
+  activityContent: {
     flex: 1,
   },
-  transactionName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  transactionDate: {
+  activityTitle: {
     fontSize: 13,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  transactionAmount: {
-    fontSize: 15,
     fontWeight: '600',
     color: colors.text,
   },
-  transactionAmountPositive: {
-    color: colors.teal,
+  activitySubtitle: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 2,
   },
-  transactionAmountNegative: {
-    color: colors.error,
-  },
-  transactionAmountPending: {
-    color: colors.warning,
+  activityTime: {
+    fontSize: 11,
+    color: colors.textTertiary,
   },
 });

@@ -1,80 +1,94 @@
 /**
  * Design System Theme
  *
- * Fintech/Wallet-inspired: Warm beige, dark navy, teal accents
- * Clean cards, soft shadows, rounded corners
+ * Dark racing app style: Pure black, neon accents, bold typography
+ * Inspired by F1/motorsport apps
  */
 
 // ============================================
-// COLORS - Fintech Warm Palette
+// COLORS - Dark Racing Palette
 // ============================================
 
 export const colors = {
-  // Base - Warm Beige/Cream
-  background: '#F5F2ED',
-  surface: '#FFFFFF',
-  card: '#FFFFFF',
-  elevated: '#FFFFFF',
+  // Base - Pure Black
+  background: '#000000',
+  surface: '#1C1C1E',
+  surfaceElevated: '#2C2C2E',
+  card: '#1C1C1E',
 
-  // Text - Dark Navy/Charcoal
-  text: '#1A1A1A',
-  textSecondary: '#5C5C5C',
-  textTertiary: '#8E8E8E',
-  textDisabled: '#B8B8B8',
+  // Text - White/Gray hierarchy
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  textTertiary: '#636366',
+  textDisabled: '#48484A',
 
-  // Primary Accent - Dark Navy
-  accent: '#1C1C1E',
-  accentDark: '#000000',
-  accentLight: '#3A3A3C',
-  accentMuted: 'rgba(28, 28, 30, 0.08)',
-  accentSubtle: 'rgba(28, 28, 30, 0.04)',
+  // Primary Accent - Electric Blue
+  accent: '#5B6EF7',
+  accentLight: '#7B8BFF',
+  accentDark: '#4A5AE6',
+  accentMuted: 'rgba(91, 110, 247, 0.15)',
 
-  // Secondary - Teal/Green (for positive values)
-  teal: '#2E9E8F',
-  tealLight: '#4ECDC4',
-  tealMuted: 'rgba(46, 158, 143, 0.12)',
+  // Secondary Accents
+  lime: '#D4FF00',
+  limeMuted: 'rgba(212, 255, 0, 0.15)',
+
+  orange: '#FF6B35',
+  orangeLight: '#FF8F5C',
+  orangeMuted: 'rgba(255, 107, 53, 0.15)',
+
+  red: '#E53935',
+  redLight: '#FF5252',
+  redMuted: 'rgba(229, 57, 53, 0.15)',
+
+  teal: '#00BFA5',
+  tealLight: '#1DE9B6',
+  tealMuted: 'rgba(0, 191, 165, 0.15)',
+
+  green: '#4CAF50',
+  greenMuted: 'rgba(76, 175, 80, 0.15)',
+
+  // Team Colors (for variety)
+  ferrari: '#DC0000',
+  mercedes: '#00D2BE',
+  redbull: '#1E41FF',
+  mclaren: '#FF8700',
 
   // Neutral Ramp
-  neutral100: '#FAFAF8',
-  neutral200: '#F5F3F0',
-  neutral300: '#E8E6E3',
-  neutral400: '#D4D2CF',
-  neutral500: '#A8A6A3',
-  neutral600: '#787674',
-  neutral700: '#545250',
-  neutral800: '#363432',
-  neutral900: '#1A1A1A',
-
-  // Accent Ramp (Navy)
-  accent100: '#F0F0F2',
-  accent200: '#E0E0E4',
-  accent300: '#C0C0C6',
-  accent400: '#8E8E96',
-  accent500: '#5C5C64',
-  accent600: '#3A3A42',
-  accent700: '#2A2A32',
-  accent800: '#1C1C1E',
-  accent900: '#0A0A0C',
+  neutral100: '#F5F5F5',
+  neutral200: '#E5E5EA',
+  neutral300: '#D1D1D6',
+  neutral400: '#C7C7CC',
+  neutral500: '#8E8E93',
+  neutral600: '#636366',
+  neutral700: '#48484A',
+  neutral800: '#3A3A3C',
+  neutral900: '#2C2C2E',
 
   // Borders
-  border: 'rgba(0, 0, 0, 0.06)',
-  borderLight: 'rgba(0, 0, 0, 0.04)',
-  borderAccent: 'rgba(28, 28, 30, 0.15)',
+  border: 'rgba(255, 255, 255, 0.1)',
+  borderLight: 'rgba(255, 255, 255, 0.06)',
+  borderAccent: 'rgba(91, 110, 247, 0.3)',
 
   // Semantic
-  success: '#2E9E8F',
-  warning: '#E5A54B',
-  error: '#E25C5C',
-  info: '#5B8DEF',
+  success: '#4CAF50',
+  warning: '#FF9500',
+  error: '#FF3B30',
+  info: '#5B6EF7',
 
   // Semantic muted
-  successMuted: 'rgba(46, 158, 143, 0.12)',
-  warningMuted: 'rgba(229, 165, 75, 0.12)',
-  errorMuted: 'rgba(226, 92, 92, 0.12)',
-  infoMuted: 'rgba(91, 141, 239, 0.12)',
+  successMuted: 'rgba(76, 175, 80, 0.15)',
+  warningMuted: 'rgba(255, 149, 0, 0.15)',
+  errorMuted: 'rgba(255, 59, 48, 0.15)',
+  infoMuted: 'rgba(91, 110, 247, 0.15)',
 
   // Divider
-  divider: 'rgba(0, 0, 0, 0.06)',
+  divider: 'rgba(255, 255, 255, 0.08)',
+
+  // Gradients (as arrays for LinearGradient)
+  gradientOrange: ['#FF8C00', '#FF5722'],
+  gradientTeal: ['#00BFA5', '#00897B'],
+  gradientGreen: ['#4CAF50', '#2E7D32'],
+  gradientBlue: ['#5B6EF7', '#3949AB'],
 };
 
 // ============================================
@@ -86,55 +100,71 @@ export const spacing = {
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 24,
-  '2xl': 32,
-  '3xl': 48,
-  '4xl': 64,
+  xl: 20,
+  '2xl': 24,
+  '3xl': 32,
+  '4xl': 48,
 };
 
 // ============================================
-// TYPOGRAPHY
+// TYPOGRAPHY - Bold, Racing Style
 // ============================================
 
 export const typography = {
-  // Large display for numbers/values
+  // Massive display for hero numbers
   display: {
-    fontSize: 36,
-    lineHeight: 42,
-    fontWeight: '700' as const,
-    letterSpacing: -1,
+    fontSize: 56,
+    lineHeight: 64,
+    fontWeight: '800' as const,
+    letterSpacing: -2,
   },
-  // Hero text
+  // Large numbers
   hero: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 42,
+    lineHeight: 48,
     fontWeight: '700' as const,
-    letterSpacing: -0.5,
+    letterSpacing: -1.5,
   },
-  // Section titles
+  // Section headers
   title: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700' as const,
+    letterSpacing: -0.3,
+  },
+  // Subtitles
+  subtitle: {
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '600' as const,
     letterSpacing: -0.2,
   },
   // Body text
   body: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
     fontWeight: '400' as const,
   },
   // Captions
   caption: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
   },
-  // Small labels
+  // Small labels/badges
   small: {
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
+    letterSpacing: 0.5,
+  },
+  // Uppercase labels
+  label: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '600' as const,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
   },
 
   // Weights
@@ -142,14 +172,15 @@ export const typography = {
   medium: '500' as const,
   semibold: '600' as const,
   bold: '700' as const,
+  heavy: '800' as const,
 };
 
 // ============================================
-// BORDER RADIUS - Soft and rounded
+// BORDER RADIUS - Smooth and Modern
 // ============================================
 
 export const radius = {
-  xs: 6,
+  xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
@@ -160,29 +191,36 @@ export const radius = {
 };
 
 // ============================================
-// SHADOWS - Soft and subtle
+// SHADOWS - Subtle on dark
 // ============================================
 
 export const shadows = {
   sm: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
     elevation: 2,
   },
   md: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
     elevation: 4,
   },
   lg: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  glow: {
+    shadowColor: '#5B6EF7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
     elevation: 8,
   },
 };
@@ -197,28 +235,34 @@ export const components = {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    ...shadows.sm,
   },
 
   // Buttons
   buttonPrimary: {
     backgroundColor: colors.accent,
-    borderRadius: radius.lg,
-    height: 52,
-    paddingHorizontal: spacing.xl,
+    borderRadius: radius.full,
+    height: 48,
+    paddingHorizontal: spacing['2xl'],
   },
   buttonSecondary: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    height: 52,
-    paddingHorizontal: spacing.xl,
-    ...shadows.sm,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.full,
+    height: 48,
+    paddingHorizontal: spacing['2xl'],
   },
-  buttonGhost: {
+  buttonLime: {
+    backgroundColor: colors.lime,
+    borderRadius: radius.xl,
+    height: 48,
+    paddingHorizontal: spacing['2xl'],
+  },
+  buttonOutline: {
     backgroundColor: 'transparent',
-    borderRadius: radius.lg,
-    height: 52,
-    paddingHorizontal: spacing.lg,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    height: 48,
+    paddingHorizontal: spacing['2xl'],
   },
 
   // Inputs
@@ -228,15 +272,22 @@ export const components = {
     borderWidth: 0,
     height: 52,
     paddingHorizontal: spacing.lg,
-    ...shadows.sm,
   },
 
   // Tags/Badges
   tag: {
-    backgroundColor: colors.tealMuted,
+    backgroundColor: colors.accentMuted,
     borderRadius: radius.sm,
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+
+  // Pill button (like "Get Ultra")
+  pill: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.full,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
 };
 
@@ -246,12 +297,11 @@ export const components = {
 
 export const layout = {
   screenPadding: 20,
-  tabBarHeight: 56,
+  tabBarHeight: 52,
   tabBarBottom: 28,
-  tabBarHorizontal: 40,
+  tabBarHorizontal: 48,
   inputBarHeight: 56,
   headerHeight: 56,
-  fabSize: 52,
 };
 
 export default {

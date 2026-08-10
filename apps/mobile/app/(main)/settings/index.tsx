@@ -1,25 +1,24 @@
 /**
- * Settings / Profile Screen
+ * Settings Screen
  *
- * Fintech-inspired: Clean profile with account cards
+ * Dark racing style: Matches dashboard design
  */
 
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
-import { colors, spacing, typography, radius, layout, shadows } from '../../../src/theme';
+import { colors, spacing, radius, layout } from '../../../src/theme';
 
-const PROFILE = {
-  name: 'James Chen',
+const USER = {
+  name: 'James',
+  fullName: 'James Chen',
   email: 'james@creator.com',
   channel: 'TechWithJames',
   subs: '124.5K',
 };
 
 export default function SettingsScreen() {
-  const router = useRouter();
-
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -30,74 +29,76 @@ export default function SettingsScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <View>
+              <Text style={styles.headerLabel}>Settings</Text>
+              <Text style={styles.headerTitle}>{USER.fullName}</Text>
+            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Text style={styles.profileInitial}>J</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Pro Card */}
+          <TouchableOpacity style={styles.proCard} activeOpacity={0.9}>
+            <LinearGradient
+              colors={[colors.accent, colors.accentLight]}
+              style={styles.proGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.proIcon}>
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill={colors.lime} stroke="none">
+                  <Path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                </Svg>
+              </View>
+              <View style={styles.proContent}>
+                <Text style={styles.proTitle}>Upgrade to Pro</Text>
+                <Text style={styles.proSubtitle}>Unlock all features</Text>
+              </View>
               <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
-                <Path d="M15 18l-6-6 6-6" />
+                <Path d="M9 18l6-6-6-6" />
               </Svg>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Settings</Text>
-            <View style={styles.headerSpacer} />
-          </View>
+            </LinearGradient>
+          </TouchableOpacity>
 
-          {/* Profile Card */}
-          <View style={styles.profileCard}>
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileAvatarText}>J</Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{PROFILE.name}</Text>
-              <Text style={styles.profileEmail}>{PROFILE.email}</Text>
-            </View>
-            <TouchableOpacity style={styles.editButton}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-                <Path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-              </Svg>
-            </TouchableOpacity>
-          </View>
-
-          {/* YouTube Connection */}
-          <TouchableOpacity style={styles.connectionCard} activeOpacity={0.7}>
-            <View style={styles.connectionIcon}>
+          {/* YouTube Card */}
+          <View style={styles.youtubeCard}>
+            <View style={styles.youtubeIcon}>
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="#FF0000">
                 <Path d="M23.5 6.2a2.8 2.8 0 00-2-2C19.8 3.8 12 3.8 12 3.8s-7.8 0-9.5.4a2.8 2.8 0 00-2 2 29.4 29.4 0 00-.5 5.8 29.4 29.4 0 00.5 5.8 2.8 2.8 0 002 2c1.7.4 9.5.4 9.5.4s7.8 0 9.5-.4a2.8 2.8 0 002-2 29.4 29.4 0 00.5-5.8 29.4 29.4 0 00-.5-5.8zM9.8 15.5V8.5l6.4 3.5-6.4 3.5z" />
               </Svg>
             </View>
-            <View style={styles.connectionInfo}>
-              <Text style={styles.connectionName}>{PROFILE.channel}</Text>
-              <Text style={styles.connectionSubs}>{PROFILE.subs} subscribers</Text>
+            <View style={styles.youtubeContent}>
+              <Text style={styles.youtubeChannel}>{USER.channel}</Text>
+              <Text style={styles.youtubeSubs}>{USER.subs} subscribers</Text>
             </View>
             <View style={styles.connectedBadge}>
               <View style={styles.connectedDot} />
               <Text style={styles.connectedText}>Connected</Text>
             </View>
-          </TouchableOpacity>
+          </View>
 
-          {/* Notifications Section */}
+          {/* Account Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notifications</Text>
+            <Text style={styles.sectionTitle}>Account</Text>
             <View style={styles.settingsCard}>
               <SettingRow
-                icon={<SunIcon />}
-                label="Daily briefing"
-                description="Morning summary at 8 AM"
-                hasSwitch
-                defaultValue={true}
+                icon={<UserIcon />}
+                label="Profile"
+                value={USER.email}
+                hasArrow
               />
-              <View style={styles.settingDivider} />
+              <SettingRow
+                icon={<KeyIcon />}
+                label="Password"
+                value="••••••••"
+                hasArrow
+              />
               <SettingRow
                 icon={<BellIcon />}
-                label="Push notifications"
-                description="Deadlines and updates"
-                hasSwitch
-                defaultValue={true}
-              />
-              <View style={styles.settingDivider} />
-              <SettingRow
-                icon={<MailIcon />}
-                label="Email digest"
-                description="Weekly performance report"
-                hasSwitch
-                defaultValue={false}
+                label="Notifications"
+                hasArrow
+                noBorder
               />
             </View>
           </View>
@@ -107,25 +108,35 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>Preferences</Text>
             <View style={styles.settingsCard}>
               <SettingRow
-                icon={<PaletteIcon />}
-                label="Appearance"
-                value="Light"
-                hasArrow
+                icon={<MoonIcon />}
+                label="Dark Mode"
+                hasSwitch
+                defaultValue={true}
               />
-              <View style={styles.settingDivider} />
+              <SettingRow
+                icon={<SunIcon />}
+                label="Daily Briefing"
+                description="8:00 AM"
+                hasSwitch
+                defaultValue={true}
+              />
               <SettingRow
                 icon={<GlobeIcon />}
                 label="Language"
                 value="English"
                 hasArrow
+                noBorder
               />
-              <View style={styles.settingDivider} />
-              <SettingRow
-                icon={<CurrencyIcon />}
-                label="Currency"
-                value="USD"
-                hasArrow
-              />
+            </View>
+          </View>
+
+          {/* Quick Stats */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>This Month</Text>
+            <View style={styles.statsRow}>
+              <StatCard value="2.4M" label="Views" color={colors.teal} />
+              <StatCard value="847" label="New Subs" color={colors.lime} />
+              <StatCard value="$8.2K" label="Revenue" color={colors.orange} />
             </View>
           </View>
 
@@ -135,31 +146,30 @@ export default function SettingsScreen() {
             <View style={styles.settingsCard}>
               <SettingRow
                 icon={<HelpIcon />}
-                label="Help center"
+                label="Help Center"
                 hasArrow
               />
-              <View style={styles.settingDivider} />
               <SettingRow
                 icon={<ChatIcon />}
-                label="Contact support"
+                label="Contact Us"
                 hasArrow
               />
-              <View style={styles.settingDivider} />
               <SettingRow
                 icon={<ShieldIcon />}
-                label="Privacy policy"
+                label="Privacy Policy"
                 hasArrow
+                noBorder
               />
             </View>
           </View>
 
           {/* Sign Out */}
           <TouchableOpacity style={styles.signOutButton} activeOpacity={0.7}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.error} strokeWidth={1.5}>
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.red} strokeWidth={1.5}>
               <Path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
               <Path d="M16 17l5-5-5-5M21 12H9" />
             </Svg>
-            <Text style={styles.signOutText}>Sign out</Text>
+            <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
 
           <Text style={styles.version}>Creator OS v1.0.0</Text>
@@ -171,7 +181,10 @@ export default function SettingsScreen() {
   );
 }
 
-// Setting Row Component
+// ============================================
+// COMPONENTS
+// ============================================
+
 function SettingRow({
   icon,
   label,
@@ -180,6 +193,7 @@ function SettingRow({
   hasSwitch,
   hasArrow,
   defaultValue,
+  noBorder,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -188,11 +202,15 @@ function SettingRow({
   hasSwitch?: boolean;
   hasArrow?: boolean;
   defaultValue?: boolean;
+  noBorder?: boolean;
 }) {
   return (
-    <TouchableOpacity style={styles.settingRow} activeOpacity={hasSwitch ? 1 : 0.7}>
-      <View style={styles.settingIconWrap}>{icon}</View>
-      <View style={styles.settingInfo}>
+    <TouchableOpacity
+      style={[styles.settingRow, !noBorder && styles.settingRowBorder]}
+      activeOpacity={hasSwitch ? 1 : 0.7}
+    >
+      <View style={styles.settingIcon}>{icon}</View>
+      <View style={styles.settingContent}>
         <Text style={styles.settingLabel}>{label}</Text>
         {description && <Text style={styles.settingDesc}>{description}</Text>}
       </View>
@@ -200,13 +218,13 @@ function SettingRow({
       {hasSwitch && (
         <Switch
           value={defaultValue}
-          trackColor={{ false: colors.neutral300, true: colors.teal }}
+          trackColor={{ false: colors.neutral700, true: colors.teal }}
           thumbColor="#FFFFFF"
-          ios_backgroundColor={colors.neutral300}
+          ios_backgroundColor={colors.neutral700}
         />
       )}
       {hasArrow && (
-        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
+        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
           <Path d="M9 18l6-6-6-6" />
         </Svg>
       )}
@@ -214,76 +232,84 @@ function SettingRow({
   );
 }
 
-// Icons
-function SunIcon() {
+function StatCard({ value, label, color }: { value: string; label: string; color: string }) {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.warning} strokeWidth={1.5}>
-      <Circle cx={12} cy={12} r={5} />
-      <Path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    <View style={styles.statCard}>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ============================================
+// ICONS
+// ============================================
+
+function UserIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
+      <Path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <Circle cx={12} cy={7} r={4} />
+    </Svg>
+  );
+}
+
+function KeyIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
+      <Path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
     </Svg>
   );
 }
 
 function BellIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.info} strokeWidth={1.5}>
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
       <Path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9" />
       <Path d="M13.73 21a2 2 0 01-3.46 0" />
     </Svg>
   );
 }
 
-function MailIcon() {
+function MoonIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={1.5}>
-      <Path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-      <Path d="M22 6l-10 7L2 6" />
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
+      <Path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
     </Svg>
   );
 }
 
-function PaletteIcon() {
+function SunIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth={1.5}>
-      <Circle cx={12} cy={12} r={10} />
-      <Circle cx={12} cy={8} r={1.5} fill={colors.accent} />
-      <Circle cx={8} cy={12} r={1.5} fill={colors.accent} />
-      <Circle cx={16} cy={12} r={1.5} fill={colors.accent} />
-      <Circle cx={12} cy={16} r={1.5} fill={colors.accent} />
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
+      <Circle cx={12} cy={12} r={5} />
+      <Path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
     </Svg>
   );
 }
 
 function GlobeIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={1.5}>
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
       <Circle cx={12} cy={12} r={10} />
       <Path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
     </Svg>
   );
 }
 
-function CurrencyIcon() {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.warning} strokeWidth={1.5}>
-      <Path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-    </Svg>
-  );
-}
-
 function HelpIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth={1.5}>
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
       <Circle cx={12} cy={12} r={10} />
       <Path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-      <Circle cx={12} cy={17} r={0.5} fill={colors.textSecondary} />
+      <Path d="M12 17h.01" />
     </Svg>
   );
 }
 
 function ChatIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth={1.5}>
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
       <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
     </Svg>
   );
@@ -291,11 +317,15 @@ function ChatIcon() {
 
 function ShieldIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth={1.5}>
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
       <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </Svg>
   );
 }
+
+// ============================================
+// STYLES
+// ============================================
 
 const styles = StyleSheet.create({
   container: {
@@ -315,115 +345,103 @@ const styles = StyleSheet.create({
   // Header
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 8,
+    paddingVertical: 20,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
+  headerLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-    marginRight: 40,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-
-  // Profile Card
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    padding: 16,
-    marginBottom: 12,
-    gap: 14,
-    ...shadows.sm,
-  },
-  profileAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.tealMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.teal,
-  },
-  profileAvatarText: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
-    color: colors.teal,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '600',
     color: colors.text,
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: colors.textTertiary,
     marginTop: 2,
   },
-  editButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: colors.background,
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profileInitial: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
   },
 
-  // Connection Card
-  connectionCard: {
+  // Pro Card
+  proCard: {
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  proGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
     padding: 16,
-    marginBottom: 24,
-    gap: 14,
-    ...shadows.sm,
   },
-  connectionIcon: {
-    width: 48,
-    height: 48,
+  proIcon: {
+    width: 44,
+    height: 44,
     borderRadius: radius.lg,
-    backgroundColor: colors.errorMuted,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  connectionInfo: {
+  proContent: {
     flex: 1,
   },
-  connectionName: {
+  proTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
   },
-  connectionSubs: {
-    fontSize: 13,
+  proSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+
+  // YouTube Card
+  youtubeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    padding: 16,
+    marginBottom: 20,
+  },
+  youtubeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    backgroundColor: colors.redMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  youtubeContent: {
+    flex: 1,
+  },
+  youtubeChannel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  youtubeSubs: {
+    fontSize: 12,
     color: colors.textTertiary,
     marginTop: 2,
   },
   connectedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: colors.tealMuted,
     borderRadius: radius.full,
     paddingHorizontal: 10,
@@ -436,22 +454,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
   },
   connectedText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.teal,
   },
 
   // Section
   section: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    marginBottom: 10,
     marginLeft: 4,
   },
 
@@ -460,43 +476,63 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius['2xl'],
     overflow: 'hidden',
-    ...shadows.sm,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    gap: 14,
+    padding: 14,
+    gap: 12,
   },
-  settingDivider: {
-    height: 1,
-    backgroundColor: colors.divider,
-    marginLeft: 66,
+  settingRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
-  settingIconWrap: {
-    width: 40,
-    height: 40,
+  settingIcon: {
+    width: 36,
+    height: 36,
     borderRadius: radius.lg,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingInfo: {
+  settingContent: {
     flex: 1,
   },
   settingLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.text,
   },
   settingDesc: {
-    fontSize: 13,
+    fontSize: 11,
     color: colors.textTertiary,
     marginTop: 2,
   },
   settingValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textTertiary,
+  },
+
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 14,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 4,
   },
 
   // Sign Out
@@ -504,21 +540,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: colors.errorMuted,
+    gap: 8,
+    backgroundColor: colors.redMuted,
     borderRadius: radius['2xl'],
-    paddingVertical: 16,
+    paddingVertical: 14,
     marginBottom: 16,
   },
   signOutText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.error,
+    color: colors.red,
   },
 
   // Version
   version: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textTertiary,
     textAlign: 'center',
   },

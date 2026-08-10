@@ -1,10 +1,11 @@
 /**
  * Modals Layout
  *
- * Modal presentation for detail views and forms.
+ * Dark racing style: Modal presentation for detail views and forms.
  */
 
 import { Stack } from 'expo-router';
+import { colors } from '../../src/theme';
 
 export default function ModalsLayout() {
   return (
@@ -13,11 +14,16 @@ export default function ModalsLayout() {
         presentation: 'modal',
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#1f2937',
+          backgroundColor: colors.surface,
         },
-        headerTintColor: '#ffffff',
+        headerTintColor: colors.text,
         headerTitleStyle: {
           fontWeight: '600',
+          fontSize: 16,
+        },
+        headerShadowVisible: false,
+        contentStyle: {
+          backgroundColor: colors.background,
         },
       }}
     >

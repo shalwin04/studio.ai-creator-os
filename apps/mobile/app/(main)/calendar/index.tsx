@@ -1,285 +1,195 @@
 /**
- * Calendar Screen
+ * Calendar/Schedule Screen
  *
- * Fintech-inspired: Clean calendar with event cards
+ * Dark racing style: Upcoming events with countdown, schedule list
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { colors, spacing, typography, radius, layout, shadows } from '../../../src/theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DAY_SIZE = (SCREEN_WIDTH - layout.screenPadding * 2 - 48) / 7;
-
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'];
-
-// Mock events
-const EVENTS: Record<string, Array<{
+interface ScheduleItem {
   id: string;
+  day: string;
+  month: string;
   title: string;
-  time: string;
-  type: 'film' | 'edit' | 'publish' | 'deal' | 'meeting';
-}>> = {
-  '2024-7-15': [
-    { id: '1', title: 'React Native Tips', time: '10:00 AM', type: 'publish' },
-    { id: '2', title: 'Film: AI Review', time: '2:00 PM', type: 'film' },
-  ],
-  '2024-7-16': [
-    { id: '3', title: 'Edit: Vlog Episode', time: '11:00 AM', type: 'edit' },
-  ],
-  '2024-7-18': [
-    { id: '4', title: 'Northwind Call', time: '3:00 PM', type: 'meeting' },
-  ],
-  '2024-7-20': [
-    { id: '5', title: 'Supabase Deadline', time: '5:00 PM', type: 'deal' },
-  ],
-  '2024-7-22': [
-    { id: '6', title: 'Setup Tour Film', time: '1:00 PM', type: 'film' },
-    { id: '7', title: 'Edit: Tips Video', time: '4:00 PM', type: 'edit' },
-  ],
+  type: string;
+  location: string;
+  locationColor: string;
+}
+
+const NEXT_EVENT = {
+  type: 'Upload',
+  title: 'AI Tips Video',
+  location: 'YouTube',
+  date: '21 - 23 Aug',
+  countdown: { days: 11, hours: 0, minutes: 28 },
 };
+
+const SCHEDULE: ScheduleItem[] = [
+  { id: '1', day: '06', month: 'Sep', title: 'Supabase Tutorial', type: 'Publish', location: 'YouTube', locationColor: colors.ferrari },
+  { id: '2', day: '13', month: 'Sep', title: 'Studio Setup Vlog', type: 'Film', location: 'Studio', locationColor: colors.mclaren },
+  { id: '3', day: '26', month: 'Sep', title: 'React Native Guide', type: 'Edit', location: 'Post', locationColor: colors.teal },
+  { id: '4', day: '04', month: 'Oct', title: 'Sponsor Meeting', type: 'Call', location: 'Zoom', locationColor: colors.accent },
+  { id: '5', day: '11', month: 'Oct', title: 'Year Review Video', type: 'Plan', location: 'Notion', locationColor: colors.lime },
+];
 
 export default function CalendarScreen() {
   const router = useRouter();
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 7, 15));
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date(2024, 7, 15));
-
-  const calendarDays = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay();
-
-    const days: Array<{ date: number; isCurrentMonth: boolean; dateObj: Date }> = [];
-
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    for (let i = startingDay - 1; i >= 0; i--) {
-      days.push({
-        date: prevMonthLastDay - i,
-        isCurrentMonth: false,
-        dateObj: new Date(year, month - 1, prevMonthLastDay - i),
-      });
-    }
-
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push({
-        date: i,
-        isCurrentMonth: true,
-        dateObj: new Date(year, month, i),
-      });
-    }
-
-    const remainingDays = 42 - days.length;
-    for (let i = 1; i <= remainingDays; i++) {
-      days.push({
-        date: i,
-        isCurrentMonth: false,
-        dateObj: new Date(year, month + 1, i),
-      });
-    }
-
-    return days;
-  }, [currentDate]);
-
-  const selectedDateKey = selectedDate
-    ? `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`
-    : null;
-
-  const selectedEvents = selectedDateKey ? EVENTS[selectedDateKey] || [] : [];
-
-  const goToPreviousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
-
-  const goToNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
-
-  const hasEvents = (date: Date) => {
-    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-    return EVENTS[key] && EVENTS[key].length > 0;
-  };
-
-  const isSelected = (date: Date) => {
-    if (!selectedDate) return false;
-    return date.getDate() === selectedDate.getDate() &&
-           date.getMonth() === selectedDate.getMonth() &&
-           date.getFullYear() === selectedDate.getFullYear();
-  };
-
-  const isToday = (date: Date) => {
-    const today = new Date(2024, 7, 15);
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
-  };
-
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'film': return colors.info;
-      case 'edit': return colors.warning;
-      case 'publish': return colors.teal;
-      case 'deal': return colors.error;
-      case 'meeting': return colors.accent;
-      default: return colors.textSecondary;
-    }
-  };
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
-              <Path d="M15 18l-6-6 6-6" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-                <Rect x={3} y={3} width={7} height={7} rx={1} />
-                <Rect x={14} y={3} width={7} height={7} rx={1} />
-                <Rect x={3} y={14} width={7} height={7} rx={1} />
-                <Rect x={14} y={14} width={7} height={7} rx={1} />
-              </Svg>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={1.5}>
-                <Path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <Path d="M13.73 21a2 2 0 01-3.46 0" />
-              </Svg>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Calendar Card */}
-        <View style={styles.calendarCard}>
-          {/* Month Navigation */}
-          <View style={styles.monthNav}>
-            <TouchableOpacity onPress={goToPreviousMonth} style={styles.navArrow}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
-                <Path d="M15 18l-6-6 6-6" />
-              </Svg>
-            </TouchableOpacity>
-            <Text style={styles.monthTitle}>
-              {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
-            </Text>
-            <TouchableOpacity onPress={goToNextMonth} style={styles.navArrow}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
-                <Path d="M9 18l6-6-6-6" />
-              </Svg>
-            </TouchableOpacity>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.headerTitle}>Upcoming Events</Text>
+              <TouchableOpacity style={styles.dropdownButton}>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
+                  <Path d="M6 9l6 6 6-6" />
+                </Svg>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Weekday Headers */}
-          <View style={styles.weekdayRow}>
-            {WEEKDAYS.map((day, index) => (
-              <View key={index} style={styles.weekdayCell}>
-                <Text style={styles.weekdayText}>{day}</Text>
+          {/* Hero Card - Next Event */}
+          <View style={styles.heroCard}>
+            <LinearGradient
+              colors={['#FF8C00', '#FF5722']}
+              style={styles.heroGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.heroHeader}>
+                <Text style={styles.heroType}>{NEXT_EVENT.type}</Text>
+                <Text style={styles.heroTitle}>{NEXT_EVENT.title}</Text>
+                <Text style={styles.heroLocation}>{NEXT_EVENT.location}</Text>
+                <Text style={styles.heroDate}>{NEXT_EVENT.date}</Text>
               </View>
+
+              <View style={styles.countdownSection}>
+                <Text style={styles.countdownLabel}>Next Upload in</Text>
+                <View style={styles.countdownRow}>
+                  <CountdownUnit value={NEXT_EVENT.countdown.days} label="Days" />
+                  <CountdownUnit value={NEXT_EVENT.countdown.hours} label="Hours" />
+                  <CountdownUnit value={NEXT_EVENT.countdown.minutes} label="Minutes" />
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.scheduleButton} activeOpacity={0.8}>
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
+                  <Path d="M5 12h14M12 5l7 7-7 7" />
+                </Svg>
+                <Text style={styles.scheduleButtonText}>Schedule</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+
+          {/* Schedule List */}
+          <View style={styles.scheduleSection}>
+            {SCHEDULE.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.scheduleItem, index === SCHEDULE.length - 1 && { borderBottomWidth: 0 }]}
+                activeOpacity={0.7}
+              >
+                <View style={styles.scheduleDate}>
+                  <Text style={styles.scheduleDateDay}>{item.day}</Text>
+                  <Text style={styles.scheduleDateMonth}>{item.month}</Text>
+                </View>
+                <View style={styles.scheduleInfo}>
+                  <Text style={styles.scheduleTitle}>{item.title}</Text>
+                  <Text style={styles.scheduleType}>
+                    {item.type} • <Text style={{ color: item.locationColor }}>{item.location}</Text>
+                  </Text>
+                </View>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
+                  <Path d="M9 18l6-6-6-6" />
+                </Svg>
+              </TouchableOpacity>
             ))}
           </View>
 
-          {/* Days Grid */}
-          <View style={styles.daysGrid}>
-            {calendarDays.map((day, index) => {
-              const selected = isSelected(day.dateObj);
-              const today = isToday(day.dateObj);
-              const hasEvent = hasEvents(day.dateObj);
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.dayCell,
-                    selected && styles.dayCellSelected,
-                  ]}
-                  onPress={() => setSelectedDate(day.dateObj)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.dayText,
-                    !day.isCurrentMonth && styles.dayTextInactive,
-                    selected && styles.dayTextSelected,
-                    today && !selected && styles.dayTextToday,
-                  ]}>
-                    {day.date}
-                  </Text>
-                  {hasEvent && !selected && (
-                    <View style={styles.eventDot} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Events Section */}
-        <View style={styles.eventsSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {selectedDate?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </Text>
-            <TouchableOpacity style={styles.addEventButton}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={2}>
-                <Path d="M12 5v14M5 12h14" />
-              </Svg>
-            </TouchableOpacity>
+          {/* Quick Add Section */}
+          <View style={styles.quickAddSection}>
+            <Text style={styles.sectionTitle}>Quick Add</Text>
+            <View style={styles.quickAddGrid}>
+              <QuickAddButton icon="video" label="Film Day" color={colors.accent} />
+              <QuickAddButton icon="edit" label="Edit Session" color={colors.orange} />
+              <QuickAddButton icon="upload" label="Publish" color={colors.teal} />
+              <QuickAddButton icon="call" label="Meeting" color={colors.lime} />
+            </View>
           </View>
 
-          <ScrollView
-            style={styles.eventsList}
-            contentContainerStyle={styles.eventsContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {selectedEvents.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIcon}>
-                  <Svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke={colors.neutral400} strokeWidth={1}>
-                    <Rect x={3} y={4} width={18} height={18} rx={2} />
-                    <Path d="M16 2v4M8 2v4M3 10h18" />
-                  </Svg>
-                </View>
-                <Text style={styles.emptyText}>No events scheduled</Text>
-                <TouchableOpacity style={styles.emptyButton}>
-                  <Text style={styles.emptyButtonText}>Add Event</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              selectedEvents.map((event) => (
-                <TouchableOpacity key={event.id} style={styles.eventCard} activeOpacity={0.7}>
-                  <View style={[styles.eventIndicator, { backgroundColor: getEventColor(event.type) }]} />
-                  <View style={styles.eventContent}>
-                    <Text style={styles.eventTitle}>{event.title}</Text>
-                    <Text style={styles.eventTime}>{event.time}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.eventMore}>
-                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
-                      <Circle cx={12} cy={12} r={1} />
-                      <Circle cx={19} cy={12} r={1} />
-                      <Circle cx={5} cy={12} r={1} />
-                    </Svg>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))
-            )}
-
-            <View style={{ height: layout.tabBarHeight + layout.tabBarBottom + 20 }} />
-          </ScrollView>
-        </View>
+          {/* Bottom padding */}
+          <View style={{ height: layout.tabBarHeight + layout.tabBarBottom + 40 }} />
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
+
+// ============================================
+// COMPONENTS
+// ============================================
+
+function CountdownUnit({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={styles.countdownUnit}>
+      <Text style={styles.countdownValue}>{String(value).padStart(2, '0')}</Text>
+      <Text style={styles.countdownUnitLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function QuickAddButton({ icon, label, color }: { icon: string; label: string; color: string }) {
+  const icons: Record<string, React.ReactNode> = {
+    video: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Path d="M23 7l-7 5 7 5V7z" />
+        <Rect x={1} y={5} width={15} height={14} rx={2} />
+      </Svg>
+    ),
+    edit: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+        <Path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+      </Svg>
+    ),
+    upload: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+      </Svg>
+    ),
+    call: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5}>
+        <Path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+      </Svg>
+    ),
+  };
+
+  return (
+    <TouchableOpacity style={styles.quickAddButton} activeOpacity={0.7}>
+      <View style={[styles.quickAddIcon, { backgroundColor: `${color}15` }]}>
+        {icons[icon]}
+      </View>
+      <Text style={styles.quickAddLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ============================================
+// STYLES
+// ============================================
 
 const styles = StyleSheet.create({
   container: {
@@ -289,220 +199,185 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: layout.screenPadding,
+  },
 
   // Header
   header: {
+    paddingVertical: 16,
+  },
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  headerActions: {
-    flexDirection: 'row',
     gap: 8,
   },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.5,
+  },
+  dropdownButton: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.sm,
   },
 
-  // Calendar Card
-  calendarCard: {
-    backgroundColor: colors.surface,
-    marginHorizontal: layout.screenPadding,
+  // Hero Card
+  heroCard: {
     borderRadius: radius['2xl'],
-    padding: 20,
-    marginBottom: 16,
-    ...shadows.sm,
-  },
-  monthNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    overflow: 'hidden',
     marginBottom: 20,
   },
-  navArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+  heroGradient: {
+    padding: 24,
   },
-  monthTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
+  heroHeader: {
+    marginBottom: 20,
   },
-  weekdayRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  weekdayCell: {
-    width: DAY_SIZE,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  weekdayText: {
+  heroType: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textTertiary,
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  daysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: DAY_SIZE,
-    height: DAY_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.lg,
-    position: 'relative',
-  },
-  dayCellSelected: {
-    backgroundColor: colors.accent,
-  },
-  dayText: {
-    fontSize: 15,
-    fontWeight: '500',
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.text,
+    marginBottom: 4,
   },
-  dayTextInactive: {
-    color: colors.textDisabled,
-  },
-  dayTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  dayTextToday: {
-    color: colors.teal,
-    fontWeight: '700',
-  },
-  eventDot: {
-    position: 'absolute',
-    bottom: 6,
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: colors.teal,
-  },
-
-  // Events Section
-  eventsSection: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    marginHorizontal: layout.screenPadding,
-    paddingTop: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  sectionTitle: {
+  heroLocation: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: colors.orange,
   },
-  addEventButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eventsList: {
-    flex: 1,
-  },
-  eventsContent: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 15,
-    color: colors.textTertiary,
-  },
-  emptyButton: {
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: radius.lg,
+  heroDate: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
   },
-  emptyButtonText: {
+  countdownSection: {
+    marginBottom: 20,
+  },
+  countdownLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 10,
+  },
+  countdownRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  countdownUnit: {
+    alignItems: 'flex-start',
+  },
+  countdownValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -1,
+  },
+  countdownUnitLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  scheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radius.full,
+    gap: 8,
+  },
+  scheduleButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
   },
 
-  // Event Card
-  eventCard: {
+  // Schedule List
+  scheduleSection: {
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    padding: 4,
+    marginBottom: 24,
+  },
+  scheduleItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radius.xl,
-    padding: 14,
-    gap: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
-  eventIndicator: {
-    width: 4,
-    height: 40,
-    borderRadius: 2,
+  scheduleDate: {
+    width: 44,
+    marginRight: 16,
   },
-  eventContent: {
-    flex: 1,
-  },
-  eventTitle: {
-    fontSize: 15,
-    fontWeight: '500',
+  scheduleDateDay: {
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.text,
   },
-  eventTime: {
+  scheduleDateMonth: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  scheduleInfo: {
+    flex: 1,
+  },
+  scheduleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  scheduleType: {
     fontSize: 13,
     color: colors.textTertiary,
-    marginTop: 2,
   },
-  eventMore: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+
+  // Quick Add
+  quickAddSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  quickAddGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  quickAddButton: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 16,
+    alignItems: 'center',
+    gap: 10,
+  },
+  quickAddIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  quickAddLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text,
   },
 });
