@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786707215483,
+      "tag": "0000_dry_doctor_strange",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786708861319,
+      "tag": "0001_overjoyed_masked_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786709388482,
+      "tag": "0002_black_fenris",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786710851734,
+      "tag": "0003_tidy_nomad",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786712885867,
+      "tag": "0004_simple_captain_cross",
+      "breakpoints": true
+    }
+  ]
+}

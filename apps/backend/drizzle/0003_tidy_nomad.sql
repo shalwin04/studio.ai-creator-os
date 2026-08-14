@@ -1,0 +1,1 @@
+ALTER TABLE "creators" ADD COLUMN "youtube_access_token" text;
