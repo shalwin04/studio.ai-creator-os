@@ -4,13 +4,13 @@
  * Drizzle ORM connection to Supabase PostgreSQL.
  */
 
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../db/schema.js';
 import { env } from './env.js';
 
 let pool: Pool;
-let db: ReturnType<typeof drizzle>;
+let db: NodePgDatabase<typeof schema>;
 
 export async function initDatabase() {
   pool = new Pool({

@@ -4,12 +4,43 @@
  * Dark racing app style: Compact floating tab bar
  */
 
-import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+import { Redirect, Tabs } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
+import { apiGetMe, mapCreator } from '../../src/services/api';
+import { useAuthStore, useCreatorStore } from '../../src/store';
 import { colors, radius, layout } from '../../src/theme';
 
 export default function MainLayout() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const profile = useCreatorStore((state) => state.profile);
+
+  // `isAuthenticated` persists across a full page reload, but `profile`
+  // deliberately doesn't (see store/index.ts) — so any reload that lands
+  // back in (main) (e.g. the web YouTube-connect round trip) leaves us
+  // authenticated with no profile loaded. Re-fetch it once when that happens.
+  useEffect(() => {
+    if (!isAuthenticated || profile) return;
+
+    apiGetMe()
+      .then((creator) => useCreatorStore.getState().setProfile(mapCreator(creator)))
+      .catch(() => {
+        // Stored token is invalid/expired — drop the stale auth flag so the
+        // guard below sends the user to login instead of a broken screen.
+        useAuthStore.getState().signOut();
+        useCreatorStore.getState().setProfile(null);
+      });
+  }, [isAuthenticated, profile]);
+
+  // Nothing else guards this group — without this, an unauthenticated user
+  // (e.g. session cleared, direct deep link) can sit on any (main) screen
+  // with no access token, silently failing every API call instead of being
+  // sent to login.
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   return (
     <View style={styles.container}>
       <Tabs

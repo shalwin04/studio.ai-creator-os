@@ -4,7 +4,7 @@
  * Dark racing style: Rankings, stats, bold numbers
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,39 +13,125 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import {
+  apiGetYoutubeChannel,
+  apiGetYoutubeVideos,
+  apiGetYoutubeAnalytics,
+  BackendYoutubeChannel,
+  BackendYoutubeVideo,
+  BackendChannelAnalyticsPoint,
+} from '../../../src/services/api';
+import { startYoutubeConnect } from '../../../src/services/youtube';
+import { showAlert } from '../../../src/utils/alert';
+import { getCategoryName, getCategoryColor } from '../../../src/utils/youtubeCategories';
 import { colors, spacing, typography, radius, layout, shadows } from '../../../src/theme';
 
 type ViewType = 'videos' | 'revenue' | 'growth';
 
-interface VideoStat {
-  id: string;
-  rank: number;
-  title: string;
-  category: string;
-  views: string;
-  categoryColor: string;
-}
-
-const VIDEO_STATS: VideoStat[] = [
-  { id: '1', rank: 1, title: 'Building AI Apps with Claude', category: 'Tutorial', views: '524K', categoryColor: colors.teal },
-  { id: '2', rank: 2, title: 'React Native in 2024', category: 'Tutorial', views: '312K', categoryColor: colors.teal },
-  { id: '3', rank: 3, title: 'My Studio Setup Tour', category: 'Vlog', views: '287K', categoryColor: colors.orange },
-  { id: '4', rank: 4, title: 'Supabase Deep Dive', category: 'Sponsored', views: '198K', categoryColor: colors.ferrari },
-  { id: '5', rank: 5, title: 'Cursor vs Copilot', category: 'Review', views: '156K', categoryColor: colors.mclaren },
-  { id: '6', rank: 6, title: 'TypeScript Tips', category: 'Tutorial', views: '134K', categoryColor: colors.teal },
-  { id: '7', rank: 7, title: 'Year in Review', category: 'Vlog', views: '98K', categoryColor: colors.orange },
-];
-
 const TABS: { id: ViewType; label: string }[] = [
   { id: 'videos', label: 'Top Videos' },
   { id: 'revenue', label: 'Revenue' },
-  { id: 'growth', label: 'Growth' },
+  { id: 'growth', label: 'Recent' },
 ];
 
+function formatCompactNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function formatPublishDate(dateString: string | null): string {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
 export default function TimelineScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ViewType>('videos');
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [channel, setChannel] = useState<BackendYoutubeChannel | null>(null);
+  const [videos, setVideos] = useState<BackendYoutubeVideo[]>([]);
+  const [analytics, setAnalytics] = useState<BackendChannelAnalyticsPoint[]>([]);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [channelData, videosData, analyticsData] = await Promise.all([
+        apiGetYoutubeChannel(),
+        apiGetYoutubeVideos(),
+        apiGetYoutubeAnalytics(),
+      ]);
+      setChannel(channelData);
+      setVideos(videosData);
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Failed to load stats data:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    loadData().finally(() => setLoading(false));
+  }, [loadData]);
+
+  const handleConnectYoutube = async () => {
+    setConnecting(true);
+    try {
+      const result = await startYoutubeConnect('/timeline');
+      if (result === 'success') {
+        await loadData();
+      }
+    } catch (error: any) {
+      showAlert('Connection Failed', error.message ?? 'Please try again');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const byViewsDesc = useMemo(
+    () => [...videos].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0)),
+    [videos]
+  );
+  const byRecent = useMemo(
+    () =>
+      [...videos].sort(
+        (a, b) => new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime()
+      ),
+    [videos]
+  );
+  const topVideo = byViewsDesc[0];
+
+  const topCategory = useMemo(() => {
+    const totals = new Map<string, { views: number; count: number }>();
+    for (const v of videos) {
+      const name = getCategoryName(v.categoryId);
+      const entry = totals.get(name) ?? { views: 0, count: 0 };
+      entry.views += v.viewCount ?? 0;
+      entry.count += 1;
+      totals.set(name, entry);
+    }
+    let best: { name: string; count: number } | null = null;
+    for (const [name, { views, count }] of totals) {
+      if (!best || views > (totals.get(best.name)?.views ?? 0)) {
+        best = { name, count };
+      }
+    }
+    return best;
+  }, [videos]);
+
+  const totalWatchMinutes = useMemo(
+    () => analytics.reduce((sum, a) => sum + a.watchTimeMinutes, 0),
+    [analytics]
+  );
+  const totalSubsGained = useMemo(
+    () => analytics.reduce((sum, a) => sum + a.subscribersGained, 0),
+    [analytics]
+  );
+
+  const activeList = activeTab === 'growth' ? byRecent : byViewsDesc;
 
   return (
     <View style={styles.container}>
@@ -59,128 +145,157 @@ export default function TimelineScreen() {
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
               <Text style={styles.headerTitle}>Video Stats</Text>
-              <TouchableOpacity style={styles.dropdownButton}>
-                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2}>
-                  <Path d="M6 9l6 6 6-6" />
-                </Svg>
-              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Hero Section with Gradient */}
-          <View style={styles.heroSection}>
-            <LinearGradient
-              colors={[colors.teal, colors.mercedes]}
-              style={styles.heroGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+          {!loading && !channel ? (
+            /* Not connected yet */
+            <TouchableOpacity
+              style={styles.heroSection}
+              activeOpacity={0.9}
+              onPress={handleConnectYoutube}
+              disabled={connecting}
             >
-              <View style={styles.heroContent}>
-                <Text style={styles.heroLabel}>MOST SUCCESSFUL VIDEO</Text>
-                <Text style={styles.heroTitle}>Building AI Apps</Text>
-                <View style={styles.heroStatsRow}>
-                  <Text style={styles.heroStatNumber}>524K</Text>
-                  <Text style={styles.heroStatLabel}>VIEWS</Text>
+              <LinearGradient
+                colors={['#FF0000', '#CC0000']}
+                style={styles.heroGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.heroLabel}>
+                  {connecting ? 'CONNECTING…' : 'NOT CONNECTED'}
+                </Text>
+                <Text style={styles.heroTitle}>Connect YouTube</Text>
+                <Text style={styles.heroSubtitle}>
+                  Link your channel to see video rankings and real stats here.
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <>
+              {/* Hero Section with Gradient */}
+              {topVideo && (
+                <View style={styles.heroSection}>
+                  <LinearGradient
+                    colors={[colors.teal, colors.mercedes]}
+                    style={styles.heroGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <View style={styles.heroContent}>
+                      <Text style={styles.heroLabel}>MOST SUCCESSFUL VIDEO</Text>
+                      <Text style={styles.heroTitle} numberOfLines={2}>{topVideo.title}</Text>
+                      <View style={styles.heroStatsRow}>
+                        <Text style={styles.heroStatNumber}>
+                          {formatCompactNumber(topVideo.viewCount ?? 0)}
+                        </Text>
+                        <Text style={styles.heroStatLabel}>VIEWS</Text>
+                      </View>
+                      <Text style={styles.heroSubtitle}>
+                        {getCategoryName(topVideo.categoryId)} • Published {formatPublishDate(topVideo.publishedAt)}
+                      </Text>
+                    </View>
+                  </LinearGradient>
                 </View>
-                <Text style={styles.heroSubtitle}>Tutorial • Published Aug 2024</Text>
+              )}
+
+              {/* Stats Cards */}
+              <View style={styles.statsRow}>
+                <StatCard
+                  label="Most Successful Category"
+                  value={String(topCategory?.count ?? 0).padStart(2, '0')}
+                  unit="VIDS"
+                  subtitle={topCategory?.name ?? '—'}
+                />
+                <StatCard
+                  label="New Subscribers"
+                  value={formatCompactNumber(totalSubsGained)}
+                  unit=""
+                  subtitle="Last 30 days"
+                />
               </View>
-            </LinearGradient>
-          </View>
 
-          {/* Stats Cards */}
-          <View style={styles.statsRow}>
-            <StatCard
-              label="Most Successful Category"
-              value="08"
-              unit="VIDS"
-              subtitle="Tutorials"
-            />
-            <StatCard
-              label="Best Growth Month"
-              value="42"
-              unit="%"
-              subtitle="September"
-            />
-          </View>
-
-          {/* Big Stat */}
-          <View style={styles.bigStatCard}>
-            <Text style={styles.bigStatLabel}>Total Watch Time</Text>
-            <View style={styles.bigStatRow}>
-              <Text style={styles.bigStatValue}>1:47:32</Text>
-            </View>
-            <Text style={styles.bigStatSubtitle}>Average per video</Text>
-          </View>
-
-          {/* Invite Card */}
-          <TouchableOpacity style={styles.inviteCard} activeOpacity={0.9}>
-            <LinearGradient
-              colors={[colors.lime, '#C8E600']}
-              style={styles.inviteGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.inviteContent}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.background} strokeWidth={2}>
-                  <Path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                </Svg>
-                <Text style={styles.inviteTitle}>share</Text>
+              {/* Big Stat */}
+              <View style={styles.bigStatCard}>
+                <Text style={styles.bigStatLabel}>Total Watch Time</Text>
+                <View style={styles.bigStatRow}>
+                  <Text style={styles.bigStatValue}>{formatCompactNumber(totalWatchMinutes)}</Text>
+                </View>
+                <Text style={styles.bigStatSubtitle}>Minutes, last 30 days</Text>
               </View>
-              <Text style={styles.inviteDescription}>
-                Share your stats with your audience. Let them see your growth journey.
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
 
-          {/* Rankings List */}
-          <View style={styles.rankingsSection}>
-            <Text style={styles.sectionTitle}>Video Rankings</Text>
+              {/* Rankings List */}
+              <View style={styles.rankingsSection}>
+                <Text style={styles.sectionTitle}>Video Rankings</Text>
 
-            {/* Tab Selector */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tabsContainer}
-            >
-              {TABS.map((tab) => (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={[styles.tab, activeTab === tab.id && styles.tabActive]}
-                  onPress={() => setActiveTab(tab.id)}
+                {/* Tab Selector */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.tabsContainer}
                 >
-                  <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {TABS.map((tab) => (
+                    <TouchableOpacity
+                      key={tab.id}
+                      style={[styles.tab, activeTab === tab.id && styles.tabActive]}
+                      onPress={() => setActiveTab(tab.id)}
+                    >
+                      <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
 
-            {/* Rankings */}
-            <View style={styles.rankingsList}>
-              {VIDEO_STATS.map((video, index) => (
-                <TouchableOpacity
-                  key={video.id}
-                  style={[styles.rankingItem, index === VIDEO_STATS.length - 1 && { borderBottomWidth: 0 }]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.rankNumber}>0{video.rank}</Text>
-                  <View style={styles.rankingInfo}>
-                    <Text style={styles.rankingTitle}>{video.title}</Text>
-                    <Text style={[styles.rankingCategory, { color: video.categoryColor }]}>
-                      {video.category}
+                {activeTab === 'revenue' ? (
+                  <View style={styles.rankingsList}>
+                    <Text style={styles.emptyStateText}>
+                      Revenue tracking isn't set up yet.
                     </Text>
                   </View>
-                  <View style={styles.rankingStats}>
-                    <Text style={styles.rankingViews}>{video.views}</Text>
-                    <Text style={styles.rankingViewsLabel}>VIEWS</Text>
+                ) : (
+                  <View style={styles.rankingsList}>
+                    {activeList.length === 0 && (
+                      <Text style={styles.emptyStateText}>No videos synced yet.</Text>
+                    )}
+                    {activeList.map((video, index) => {
+                      const categoryName = getCategoryName(video.categoryId);
+                      return (
+                        <TouchableOpacity
+                          key={video.id}
+                          style={[
+                            styles.rankingItem,
+                            index === activeList.length - 1 && { borderBottomWidth: 0 },
+                          ]}
+                          activeOpacity={0.7}
+                          onPress={() =>
+                            router.push({ pathname: '/(modals)/video-detail', params: { id: video.id } })
+                          }
+                        >
+                          <Text style={styles.rankNumber}>{String(index + 1).padStart(2, '0')}</Text>
+                          <View style={styles.rankingInfo}>
+                            <Text style={styles.rankingTitle} numberOfLines={1}>{video.title}</Text>
+                            <Text style={[styles.rankingCategory, { color: getCategoryColor(categoryName) }]}>
+                              {categoryName}
+                            </Text>
+                          </View>
+                          <View style={styles.rankingStats}>
+                            <Text style={styles.rankingViews}>
+                              {formatCompactNumber(video.viewCount ?? 0)}
+                            </Text>
+                            <Text style={styles.rankingViewsLabel}>VIEWS</Text>
+                          </View>
+                          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
+                            <Path d="M9 18l6-6-6-6" />
+                          </Svg>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.textTertiary} strokeWidth={1.5}>
-                    <Path d="M9 18l6-6-6-6" />
-                  </Svg>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Bottom padding */}
           <View style={{ height: layout.tabBarHeight + layout.tabBarBottom + 40 }} />
@@ -437,6 +552,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius['2xl'],
     padding: 4,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    padding: 24,
   },
   rankingItem: {
     flexDirection: 'row',

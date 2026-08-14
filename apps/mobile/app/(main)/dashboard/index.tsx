@@ -4,7 +4,7 @@
  * Dark racing style: Hero stats, progress rings, bold typography
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,30 +16,63 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
+import {
+  apiGetYoutubeChannel,
+  apiGetYoutubeVideos,
+  apiGetYoutubeAnalytics,
+  BackendYoutubeChannel,
+  BackendYoutubeVideo,
+  BackendChannelAnalyticsPoint,
+} from '../../../src/services/api';
+import { startYoutubeConnect } from '../../../src/services/youtube';
+import { showAlert } from '../../../src/utils/alert';
+import { useCreatorStore } from '../../../src/store';
 import { colors, spacing, radius, layout, shadows } from '../../../src/theme';
 
-const USER = {
-  name: 'James',
-  fullName: 'James Chen',
-};
+function formatCompactNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
 
-const HERO_STATS = {
-  totalViews: '2.4M',
-  change: '+12%',
-  videos: 6,
-  hours: 42,
-};
-
-const ACTIVITY = [
-  { id: '1', type: 'video', title: 'New video published', subtitle: 'How I Built This App', time: '2h ago', color: colors.teal },
-  { id: '2', type: 'milestone', title: 'Milestone reached', subtitle: '100K subscribers!', time: '1d ago', color: colors.orange },
-  { id: '3', type: 'deal', title: 'Deal expires soon', subtitle: 'Northwind Audio · $3,500', time: '1d left', color: colors.red },
-];
+function timeAgo(dateString: string): string {
+  const diffMs = Date.now() - new Date(dateString).getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHours < 1) return 'just now';
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
+}
 
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [channel, setChannel] = useState<BackendYoutubeChannel | null>(null);
+  const [videos, setVideos] = useState<BackendYoutubeVideo[]>([]);
+  const [analytics, setAnalytics] = useState<BackendChannelAnalyticsPoint[]>([]);
   const router = useRouter();
+  const profile = useCreatorStore((state) => state.profile);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [channelData, videosData, analyticsData] = await Promise.all([
+        apiGetYoutubeChannel(),
+        apiGetYoutubeVideos(),
+        apiGetYoutubeAnalytics(),
+      ]);
+      setChannel(channelData);
+      setVideos(videosData);
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    loadData().finally(() => setLoading(false));
+  }, [loadData]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -50,9 +83,41 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await loadData();
     setRefreshing(false);
   };
+
+  const handleConnectYoutube = async () => {
+    setConnecting(true);
+    try {
+      const result = await startYoutubeConnect('/dashboard');
+      if (result === 'success') {
+        await loadData();
+      }
+      // 'web-redirect' navigates the tab away — nothing more to do here.
+    } catch (error: any) {
+      showAlert('Connection Failed', error.message ?? 'Please try again');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const totalViews = useMemo(() => analytics.reduce((sum, a) => sum + a.views, 0), [analytics]);
+  const totalWatchHours = useMemo(
+    () => Math.round(analytics.reduce((sum, a) => sum + a.watchTimeMinutes, 0) / 60),
+    [analytics]
+  );
+  const trendPct = useMemo(() => {
+    if (analytics.length < 14) return null;
+    const mid = Math.floor(analytics.length / 2);
+    const firstHalf = analytics.slice(0, mid).reduce((s, a) => s + a.views, 0);
+    const secondHalf = analytics.slice(mid).reduce((s, a) => s + a.views, 0);
+    if (firstHalf === 0) return null;
+    return Math.round(((secondHalf - firstHalf) / firstHalf) * 100);
+  }, [analytics]);
+
+  const displayName = profile?.display_name || 'Creator';
+  const recentVideos = videos.slice(0, 4);
 
   return (
     <View style={styles.container}>
@@ -69,61 +134,96 @@ export default function DashboardScreen() {
           <View style={styles.header}>
             <View>
               <Text style={styles.greeting}>{getGreeting()},</Text>
-              <Text style={styles.userName}>{USER.name}</Text>
+              <Text style={styles.userName}>{displayName}</Text>
             </View>
-            <TouchableOpacity style={styles.profileButton}>
-              <Text style={styles.profileInitial}>J</Text>
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={() => router.push('/(main)/settings')}
+            >
+              <Text style={styles.profileInitial}>{displayName.charAt(0).toUpperCase()}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Hero Stats Card */}
-          <View style={styles.heroCard}>
-            <LinearGradient
-              colors={['#1E3A5F', '#0D1B2A']}
-              style={styles.heroGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+          {!loading && !channel ? (
+            /* Not connected yet */
+            <TouchableOpacity
+              style={styles.connectCard}
+              activeOpacity={0.9}
+              onPress={handleConnectYoutube}
+              disabled={connecting}
             >
-              <Text style={styles.heroLabel}>TOTAL VIEWS THIS MONTH</Text>
-              <View style={styles.heroValueRow}>
-                <Text style={styles.heroValue}>{HERO_STATS.totalViews}</Text>
-                <View style={styles.heroTrend}>
-                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={2.5}>
-                    <Path d="M18 15l-6-6-6 6" />
-                  </Svg>
-                  <Text style={styles.heroTrendText}>{HERO_STATS.change}</Text>
-                </View>
-              </View>
+              <LinearGradient
+                colors={['#FF0000', '#CC0000']}
+                style={styles.connectGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.connectTitle}>
+                  {connecting ? 'Connecting…' : 'Connect YouTube'}
+                </Text>
+                <Text style={styles.connectSubtitle}>
+                  Link your channel to see real views, watch time, and video performance here.
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <>
+              {/* Hero Stats Card */}
+              <View style={styles.heroCard}>
+                <LinearGradient
+                  colors={['#1E3A5F', '#0D1B2A']}
+                  style={styles.heroGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.heroLabel}>TOTAL VIEWS (LAST 30 DAYS)</Text>
+                  <View style={styles.heroValueRow}>
+                    <Text style={styles.heroValue}>{formatCompactNumber(totalViews)}</Text>
+                    {trendPct !== null && (
+                      <View style={styles.heroTrend}>
+                        <Svg
+                          width={14}
+                          height={14}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke={trendPct >= 0 ? colors.teal : colors.red}
+                          strokeWidth={2.5}
+                        >
+                          <Path d={trendPct >= 0 ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+                        </Svg>
+                        <Text
+                          style={[
+                            styles.heroTrendText,
+                            trendPct < 0 && { color: colors.red },
+                          ]}
+                        >
+                          {trendPct >= 0 ? '+' : ''}
+                          {trendPct}%
+                        </Text>
+                      </View>
+                    )}
+                  </View>
 
-              {/* Mini Chart */}
-              <View style={styles.miniChart}>
-                {[0.4, 0.6, 0.5, 0.8, 0.7, 0.9, 0.75, 1, 0.85, 0.6].map((h, i) => (
-                  <View key={i} style={[styles.chartBar, { height: h * 32 }]} />
-                ))}
+                  <View style={styles.heroStats}>
+                    <View style={styles.heroStat}>
+                      <Text style={styles.heroStatValue}>{channel?.videoCount ?? videos.length}</Text>
+                      <Text style={styles.heroStatLabel}>Videos</Text>
+                    </View>
+                    <View style={styles.heroStat}>
+                      <Text style={styles.heroStatValue}>{totalWatchHours}</Text>
+                      <Text style={styles.heroStatLabel}>Hours</Text>
+                    </View>
+                    <View style={styles.heroStat}>
+                      <Text style={styles.heroStatValue}>
+                        {formatCompactNumber(channel?.subscriberCount ?? 0)}
+                      </Text>
+                      <Text style={styles.heroStatLabel}>Subscribers</Text>
+                    </View>
+                  </View>
+                </LinearGradient>
               </View>
-
-              <View style={styles.heroStats}>
-                <View style={styles.heroStat}>
-                  <Text style={styles.heroStatValue}>0{HERO_STATS.videos}</Text>
-                  <Text style={styles.heroStatLabel}>Videos</Text>
-                </View>
-                <View style={styles.heroStat}>
-                  <Text style={styles.heroStatValue}>{HERO_STATS.hours}</Text>
-                  <Text style={styles.heroStatLabel}>Hours</Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </View>
-
-          {/* Progress Section */}
-          <View style={styles.progressSection}>
-            <ProgressRing percentage={47} color={colors.accent} />
-            <View style={styles.progressStats}>
-              <ProgressStat value="11/23" label="Videos Published" />
-              <ProgressStat value="3.3M" label="Total Views" />
-              <ProgressStat value="675" label="Hours Watched" />
-            </View>
-          </View>
+            </>
+          )}
 
           {/* Quick Actions */}
           <View style={styles.section}>
@@ -160,30 +260,36 @@ export default function DashboardScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Recent Activity */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAll}>View all</Text>
-              </TouchableOpacity>
-            </View>
+          {/* Recent Videos */}
+          {recentVideos.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recent Videos</Text>
+              </View>
 
-            <View style={styles.activityList}>
-              {ACTIVITY.map((item, index) => (
-                <View key={item.id} style={[styles.activityItem, index === ACTIVITY.length - 1 && { borderBottomWidth: 0 }]}>
-                  <View style={[styles.activityIcon, { backgroundColor: `${item.color}20` }]}>
-                    <View style={[styles.activityDot, { backgroundColor: item.color }]} />
+              <View style={styles.activityList}>
+                {recentVideos.map((video, index) => (
+                  <View
+                    key={video.id}
+                    style={[styles.activityItem, index === recentVideos.length - 1 && { borderBottomWidth: 0 }]}
+                  >
+                    <View style={[styles.activityIcon, { backgroundColor: `${colors.teal}20` }]}>
+                      <View style={[styles.activityDot, { backgroundColor: colors.teal }]} />
+                    </View>
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityTitle} numberOfLines={1}>{video.title}</Text>
+                      <Text style={styles.activitySubtitle}>
+                        {formatCompactNumber(video.viewCount ?? 0)} views
+                      </Text>
+                    </View>
+                    <Text style={styles.activityTime}>
+                      {video.publishedAt ? timeAgo(video.publishedAt) : ''}
+                    </Text>
                   </View>
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityTitle}>{item.title}</Text>
-                    <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
-                  </View>
-                  <Text style={styles.activityTime}>{item.time}</Text>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Bottom padding */}
           <View style={{ height: layout.tabBarHeight + layout.tabBarBottom + 40 }} />
@@ -197,52 +303,6 @@ export default function DashboardScreen() {
 // COMPONENTS
 // ============================================
 
-function ProgressRing({ percentage, color }: { percentage: number; color: string }) {
-  const size = 100;
-  const strokeWidth = 8;
-  const r = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * r;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <View style={styles.progressRing}>
-      <Svg width={size} height={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={colors.surfaceElevated}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <View style={styles.progressRingContent}>
-        <Text style={styles.progressRingValue}>{percentage}%</Text>
-      </View>
-    </View>
-  );
-}
-
-function ProgressStat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.progressStatItem}>
-      <Text style={styles.progressStatValue}>{value}</Text>
-      <Text style={styles.progressStatLabel}>{label}</Text>
-    </View>
-  );
-}
 
 function QuickAction({ icon, label, color }: { icon: string; label: string; color: string }) {
   const icons: Record<string, React.ReactNode> = {
@@ -329,6 +389,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+
+  // Connect Card (not-yet-connected empty state)
+  connectCard: {
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  connectGradient: {
+    padding: 20,
+  },
+  connectTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 6,
+  },
+  connectSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 19,
   },
 
   // Hero Card

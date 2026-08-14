@@ -6,6 +6,7 @@
 
 import { initRedis } from './lib/redis.js';
 import { initDatabase } from './lib/database.js';
+import { initQueue } from './lib/queue.js';
 import { startWorkers } from './jobs/index.js';
 
 async function bootstrap() {
@@ -13,6 +14,10 @@ async function bootstrap() {
 
   await initDatabase();
   await initRedis();
+  // Needed here too (not just server.ts) — the recurring "sync-all-creators"
+  // job fans out to per-creator jobs via youtubeSyncQueue.add(), which runs
+  // inside this worker process.
+  await initQueue();
   await startWorkers();
 
   console.log('Workers started successfully');
