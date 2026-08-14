@@ -13,13 +13,14 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
-import { signIn } from '../../src/services/supabase';
+import { apiLogin, mapCreator } from '../../src/services/api';
+import { showAlert } from '../../src/utils/alert';
+import { useAuthStore, useCreatorStore } from '../../src/store';
 import { colors, spacing, radius, layout } from '../../src/theme';
 
 export default function LoginScreen() {
@@ -27,19 +28,25 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const setSession = useAuthStore((state) => state.setSession);
+  const setUser = useAuthStore((state) => state.setUser);
+  const setProfile = useCreatorStore((state) => state.setProfile);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
 
     setIsLoading(true);
     try {
-      await signIn(email, password);
-      // Navigation handled by auth state listener in _layout
+      const { session, creator } = await apiLogin(email, password);
+      setSession(session);
+      setUser(session.user);
+      setProfile(mapCreator(creator));
+      // Navigation handled by the (auth) layout once isAuthenticated flips true
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message);
+      showAlert('Login Failed', error.message ?? 'Please try again');
     } finally {
       setIsLoading(false);
     }

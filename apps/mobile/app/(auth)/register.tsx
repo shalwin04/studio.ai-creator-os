@@ -13,14 +13,14 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
-import { signUp } from '../../src/services/supabase';
+import { apiRegister } from '../../src/services/api';
+import { showAlert } from '../../src/utils/alert';
 import { colors, spacing, radius, layout } from '../../src/theme';
 
 export default function RegisterScreen() {
@@ -34,30 +34,30 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!displayName || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('Error', 'Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      showAlert('Error', 'Password must be at least 6 characters');
       return;
     }
 
     setIsLoading(true);
     try {
-      await signUp(email, password, displayName);
-      Alert.alert(
+      await apiRegister(email, password, displayName);
+      showAlert(
         'Check your email',
         'We sent you a confirmation link. Please verify your email to continue.',
-        [{ text: 'OK' }]
+        () => router.replace('/(auth)/login')
       );
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message);
+      showAlert('Registration Failed', error.message ?? 'Please try again');
     } finally {
       setIsLoading(false);
     }

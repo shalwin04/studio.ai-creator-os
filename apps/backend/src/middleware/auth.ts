@@ -1,13 +1,12 @@
 /**
  * Auth Middleware
  *
- * Verifies JWT tokens and attaches user to request.
+ * Verifies Supabase-issued access tokens and attaches the creator to the request.
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import jwt from 'jsonwebtoken';
-import { env } from '../lib/env.js';
-import { getDb } from '../lib/database.js';
+import { verifySupabaseToken } from '../lib/supabaseAdmin.js';
+import { findOrCreateCreator } from '../services/creator.js';
 
 // Routes that don't require auth
 const PUBLIC_ROUTES = [
@@ -15,6 +14,7 @@ const PUBLIC_ROUTES = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/refresh',
+  '/api/auth/youtube/callback',
   '/api/webhooks',
 ];
 
@@ -52,26 +52,20 @@ export async function authMiddleware(
 
   const token = authHeader.slice(7);
 
-  try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as {
-      sub: string;
-      email: string;
-    };
+  const authUser = await verifySupabaseToken(token);
 
-    // Get creator from database
-    const db = getDb();
-    // TODO: Query creator by userId
-    // const creator = await db.query.creators.findFirst({...});
-
-    request.user = {
-      userId: payload.sub,
-      creatorId: payload.sub, // TODO: Replace with actual creatorId
-      email: payload.email,
-    };
-  } catch (error) {
+  if (!authUser) {
     return reply.status(401).send({
       error: 'Unauthorized',
       message: 'Invalid or expired token',
     });
   }
+
+  const creator = await findOrCreateCreator(authUser.id, authUser.email, authUser.displayName);
+
+  request.user = {
+    userId: authUser.id,
+    creatorId: creator.id,
+    email: authUser.email,
+  };
 }

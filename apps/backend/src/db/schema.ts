@@ -15,6 +15,7 @@ import {
   jsonb,
   date,
   index,
+  uniqueIndex,
   real,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
@@ -28,6 +29,7 @@ export const creators = pgTable('creators', {
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
   youtubeConnected: boolean('youtube_connected').default(false),
+  youtubeAccessToken: text('youtube_access_token'),
   youtubeRefreshToken: text('youtube_refresh_token'),
   youtubeTokenExpiresAt: timestamp('youtube_token_expires_at'),
   timezone: text('timezone').default('UTC'),
@@ -107,6 +109,24 @@ export const youtubeVideos = pgTable('youtube_videos', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+export const videoAnalytics = pgTable('video_analytics', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  videoId: uuid('video_id').notNull().references(() => youtubeVideos.id),
+  date: date('date').notNull(),
+  views: integer('views').default(0),
+  watchTimeMinutes: integer('watch_time_minutes').default(0),
+  likes: integer('likes').default(0),
+  comments: integer('comments').default(0),
+  shares: integer('shares').default(0),
+  subscribersGained: integer('subscribers_gained').default(0),
+  ctr: real('ctr'),
+  avgViewDuration: real('avg_view_duration'),
+  avgViewPercentage: real('avg_view_percentage'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  videoDateIdx: uniqueIndex('idx_video_analytics_video_date').on(table.videoId, table.date),
+}));
+
 // ============ TASKS ============
 
 export const tasks = pgTable('tasks', {
@@ -118,6 +138,7 @@ export const tasks = pgTable('tasks', {
   priority: text('priority').default('medium'),
   dueDate: timestamp('due_date'),
   completedAt: timestamp('completed_at'),
+  reminderAt: timestamp('reminder_at'),
   tags: jsonb('tags'),
   relatedEntityType: text('related_entity_type'),
   relatedEntityId: uuid('related_entity_id'),
@@ -177,6 +198,19 @@ export const sponsorships = pgTable('sponsorships', {
   contractUrl: text('contract_url'),
   notes: text('notes'),
   pipelineId: uuid('pipeline_id'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const sponsorshipDeliverables = pgTable('sponsorship_deliverables', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sponsorshipId: uuid('sponsorship_id').notNull().references(() => sponsorships.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  type: text('type'),
+  dueDate: timestamp('due_date'),
+  status: text('status').default('pending'),
+  linkedVideoId: uuid('linked_video_id').references(() => youtubeVideos.id),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -272,6 +306,36 @@ export const youtubeChannelsRelations = relations(youtubeChannels, ({ one, many 
     references: [creators.id],
   }),
   videos: many(youtubeVideos),
+}));
+
+export const youtubeVideosRelations = relations(youtubeVideos, ({ one, many }) => ({
+  channel: one(youtubeChannels, {
+    fields: [youtubeVideos.channelId],
+    references: [youtubeChannels.id],
+  }),
+  analytics: many(videoAnalytics),
+}));
+
+export const videoAnalyticsRelations = relations(videoAnalytics, ({ one }) => ({
+  video: one(youtubeVideos, {
+    fields: [videoAnalytics.videoId],
+    references: [youtubeVideos.id],
+  }),
+}));
+
+export const sponsorshipsRelations = relations(sponsorships, ({ one, many }) => ({
+  creator: one(creators, {
+    fields: [sponsorships.creatorId],
+    references: [creators.id],
+  }),
+  deliverables: many(sponsorshipDeliverables),
+}));
+
+export const sponsorshipDeliverablesRelations = relations(sponsorshipDeliverables, ({ one }) => ({
+  sponsorship: one(sponsorships, {
+    fields: [sponsorshipDeliverables.sponsorshipId],
+    references: [sponsorships.id],
+  }),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({

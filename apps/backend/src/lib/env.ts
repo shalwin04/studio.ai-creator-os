@@ -12,6 +12,12 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   CORS_ORIGINS: z.string().transform((s) => s.split(',')).default('*'),
 
+  // Where the app's web build lives — used as the redirect target for
+  // Supabase auth emails (confirmation, password reset). Without this,
+  // Supabase falls back to its project default, which can land the user
+  // on this bare API server instead of the app.
+  APP_WEB_URL: z.string().default('http://localhost:8081'),
+
   // Database (Supabase PostgreSQL or local Docker)
   DATABASE_URL: z.string(),
 
@@ -32,6 +38,7 @@ const envSchema = z.object({
   // YouTube
   YOUTUBE_CLIENT_ID: z.string(),
   YOUTUBE_CLIENT_SECRET: z.string(),
+  YOUTUBE_REDIRECT_URI: z.string(),
 
   // Push Notifications
   EXPO_ACCESS_TOKEN: z.string().optional(),

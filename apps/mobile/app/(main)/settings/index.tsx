@@ -4,21 +4,82 @@
  * Dark racing style: Matches dashboard design
  */
 
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import {
+  apiLogout,
+  apiGetYoutubeChannel,
+  apiGetYoutubeAnalytics,
+  BackendYoutubeChannel,
+  BackendChannelAnalyticsPoint,
+} from '../../../src/services/api';
+import { startYoutubeConnect } from '../../../src/services/youtube';
+import { showAlert } from '../../../src/utils/alert';
+import { useAuthStore, useCreatorStore } from '../../../src/store';
 import { colors, spacing, radius, layout } from '../../../src/theme';
 
-const USER = {
-  name: 'James',
-  fullName: 'James Chen',
-  email: 'james@creator.com',
-  channel: 'TechWithJames',
-  subs: '124.5K',
-};
+function formatCompactNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
 
 export default function SettingsScreen() {
+  const router = useRouter();
+  const signOut = useAuthStore((state) => state.signOut);
+  const profile = useCreatorStore((state) => state.profile);
+  const setProfile = useCreatorStore((state) => state.setProfile);
+  const [channel, setChannel] = useState<BackendYoutubeChannel | null>(null);
+  const [analytics, setAnalytics] = useState<BackendChannelAnalyticsPoint[]>([]);
+  const [connecting, setConnecting] = useState(false);
+
+  const loadYoutubeData = useCallback(async () => {
+    try {
+      const [channelData, analyticsData] = await Promise.all([
+        apiGetYoutubeChannel(),
+        apiGetYoutubeAnalytics(),
+      ]);
+      setChannel(channelData);
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Failed to load settings YouTube data:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadYoutubeData();
+  }, [loadYoutubeData]);
+
+  const handleSignOut = async () => {
+    await apiLogout();
+    signOut();
+    setProfile(null);
+    router.replace('/(auth)/login');
+  };
+
+  const handleConnectYoutube = async () => {
+    setConnecting(true);
+    try {
+      const result = await startYoutubeConnect('/settings');
+      if (result === 'success') {
+        await loadYoutubeData();
+      }
+    } catch (error: any) {
+      showAlert('Connection Failed', error.message ?? 'Please try again');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const displayName = profile?.display_name || 'Creator';
+  const totalViews = analytics.reduce((sum, a) => sum + a.views, 0);
+  const subscribersGained = analytics.reduce((sum, a) => sum + a.subscribersGained, 0);
+  const watchHours = Math.round(analytics.reduce((sum, a) => sum + a.watchTimeMinutes, 0) / 60);
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -31,11 +92,11 @@ export default function SettingsScreen() {
           <View style={styles.header}>
             <View>
               <Text style={styles.headerLabel}>Settings</Text>
-              <Text style={styles.headerTitle}>{USER.fullName}</Text>
+              <Text style={styles.headerTitle}>{displayName}</Text>
             </View>
-            <TouchableOpacity style={styles.profileButton}>
-              <Text style={styles.profileInitial}>J</Text>
-            </TouchableOpacity>
+            <View style={styles.profileButton}>
+              <Text style={styles.profileInitial}>{displayName.charAt(0).toUpperCase()}</Text>
+            </View>
           </View>
 
           {/* Pro Card */}
@@ -62,21 +123,34 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           {/* YouTube Card */}
-          <View style={styles.youtubeCard}>
+          <TouchableOpacity
+            style={styles.youtubeCard}
+            activeOpacity={channel ? 1 : 0.8}
+            disabled={!!channel || connecting}
+            onPress={handleConnectYoutube}
+          >
             <View style={styles.youtubeIcon}>
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="#FF0000">
                 <Path d="M23.5 6.2a2.8 2.8 0 00-2-2C19.8 3.8 12 3.8 12 3.8s-7.8 0-9.5.4a2.8 2.8 0 00-2 2 29.4 29.4 0 00-.5 5.8 29.4 29.4 0 00.5 5.8 2.8 2.8 0 002 2c1.7.4 9.5.4 9.5.4s7.8 0 9.5-.4a2.8 2.8 0 002-2 29.4 29.4 0 00.5-5.8 29.4 29.4 0 00-.5-5.8zM9.8 15.5V8.5l6.4 3.5-6.4 3.5z" />
               </Svg>
             </View>
             <View style={styles.youtubeContent}>
-              <Text style={styles.youtubeChannel}>{USER.channel}</Text>
-              <Text style={styles.youtubeSubs}>{USER.subs} subscribers</Text>
+              <Text style={styles.youtubeChannel}>
+                {channel ? channel.title : connecting ? 'Connecting…' : 'Connect YouTube'}
+              </Text>
+              <Text style={styles.youtubeSubs}>
+                {channel
+                  ? `${formatCompactNumber(channel.subscriberCount ?? 0)} subscribers`
+                  : 'Tap to link your channel'}
+              </Text>
             </View>
-            <View style={styles.connectedBadge}>
-              <View style={styles.connectedDot} />
-              <Text style={styles.connectedText}>Connected</Text>
-            </View>
-          </View>
+            {channel && (
+              <View style={styles.connectedBadge}>
+                <View style={styles.connectedDot} />
+                <Text style={styles.connectedText}>Connected</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
           {/* Account Section */}
           <View style={styles.section}>
@@ -85,7 +159,7 @@ export default function SettingsScreen() {
               <SettingRow
                 icon={<UserIcon />}
                 label="Profile"
-                value={USER.email}
+                value={profile?.email}
                 hasArrow
               />
               <SettingRow
@@ -131,14 +205,16 @@ export default function SettingsScreen() {
           </View>
 
           {/* Quick Stats */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>This Month</Text>
-            <View style={styles.statsRow}>
-              <StatCard value="2.4M" label="Views" color={colors.teal} />
-              <StatCard value="847" label="New Subs" color={colors.lime} />
-              <StatCard value="$8.2K" label="Revenue" color={colors.orange} />
+          {channel && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Last 30 Days</Text>
+              <View style={styles.statsRow}>
+                <StatCard value={formatCompactNumber(totalViews)} label="Views" color={colors.teal} />
+                <StatCard value={formatCompactNumber(subscribersGained)} label="New Subs" color={colors.lime} />
+                <StatCard value={String(watchHours)} label="Hours Watched" color={colors.orange} />
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Support Section */}
           <View style={styles.section}>
@@ -164,7 +240,7 @@ export default function SettingsScreen() {
           </View>
 
           {/* Sign Out */}
-          <TouchableOpacity style={styles.signOutButton} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.signOutButton} activeOpacity={0.7} onPress={handleSignOut}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.red} strokeWidth={1.5}>
               <Path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
               <Path d="M16 17l5-5-5-5M21 12H9" />

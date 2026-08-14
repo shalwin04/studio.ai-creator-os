@@ -4,19 +4,18 @@
  * Handles authentication flow including login, register, and onboarding.
  */
 
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import { useAuthStore, useCreatorStore } from '../../src/store';
 import { ActivityIndicator, View } from 'react-native';
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading } = useAuthStore();
   const { isOnboarded } = useCreatorStore();
-
-  // DEV MODE: Skip auth and go directly to main app
-  const DEV_SKIP_AUTH = true;
-  if (DEV_SKIP_AUTH) {
-    return <Redirect href="/(main)/chat" />;
-  }
+  // This layout wraps every screen in the (auth) group, including
+  // onboarding itself — redirects below must not target the screen
+  // that's already active, or the layout redirects to itself forever.
+  const segments = useSegments();
+  const isOnOnboarding = (segments as string[]).includes('onboarding');
 
   // Show loading while checking auth state
   if (isLoading) {
@@ -33,7 +32,7 @@ export default function AuthLayout() {
   }
 
   // Redirect to onboarding if authenticated but not onboarded
-  if (isAuthenticated && !isOnboarded) {
+  if (isAuthenticated && !isOnboarded && !isOnOnboarding) {
     return <Redirect href="/(auth)/onboarding" />;
   }
 

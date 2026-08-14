@@ -5,7 +5,11 @@
  */
 
 import { Worker, Job } from 'bullmq';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { getRedis } from '../lib/redis.js';
+import { getDb } from '../lib/database.js';
+import { youtubeSyncQueue } from '../lib/queue.js';
+import { creators } from '../db/schema.js';
 import { YouTubeService } from '../services/youtube/index.js';
 import { BriefingService } from '../services/briefing/index.js';
 import { ImpactService } from '../services/impact/index.js';
@@ -84,8 +88,17 @@ export async function startWorkers() {
 // Helper functions
 
 async function syncAllCreators() {
-  // TODO: Get all creators and queue individual sync jobs
-  console.log('Syncing all creators...');
+  const db = getDb();
+  const connectedCreators = await db
+    .select({ id: creators.id })
+    .from(creators)
+    .where(and(eq(creators.youtubeConnected, true), isNotNull(creators.youtubeRefreshToken)));
+
+  console.log(`Queuing YouTube sync for ${connectedCreators.length} creator(s)...`);
+
+  for (const creator of connectedCreators) {
+    await youtubeSyncQueue.add('sync-creator', { creatorId: creator.id, fullSync: false });
+  }
 }
 
 async function generateAllBriefings() {

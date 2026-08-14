@@ -35,7 +35,8 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       session: null,
       user: null,
-      isLoading: true,
+      // No persisted session to restore yet, so there's nothing to wait on.
+      isLoading: false,
       isAuthenticated: false,
 
       setSession: (session) =>

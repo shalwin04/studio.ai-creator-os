@@ -4,57 +4,53 @@
  * Dark racing style: Bold hero sections, gradient cards, modern flow
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
-import { initiateYouTubeAuth, syncVideos } from '../../src/services/youtube';
-import { supabase, updateCreatorProfile } from '../../src/services/supabase';
-import { useCreatorStore, useAuthStore } from '../../src/store';
+import { startYoutubeConnect } from '../../src/services/youtube';
+import { showAlert } from '../../src/utils/alert';
+import { useCreatorStore } from '../../src/store';
 import { colors, spacing, radius, layout } from '../../src/theme';
 
 const { width } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
-  const [step, setStep] = useState(1);
+  const params = useLocalSearchParams<{ success?: string; error?: string }>();
+  const [step, setStep] = useState(params.success === 'true' ? 2 : 1);
   const [isConnecting, setIsConnecting] = useState(false);
   const { setYoutubeConnected, updateProfile } = useCreatorStore();
-  const { user } = useAuthStore();
+
+  // Returning here after a web-based OAuth redirect round trip.
+  useEffect(() => {
+    if (params.success === 'true') {
+      setYoutubeConnected(true);
+    } else if (params.error) {
+      showAlert('Connection Failed', String(params.error));
+    }
+  }, [params.success, params.error]);
 
   const handleConnectYouTube = async () => {
-    if (!user) return;
-
     setIsConnecting(true);
     try {
-      const result = await initiateYouTubeAuth();
+      // Groups like (auth) don't appear in the resolved web URL.
+      const result = await startYoutubeConnect('/onboarding');
 
-      // Save channel to database
-      await supabase.from('youtube_channels').insert({
-        creator_id: user.id,
-        channel_id: result.channelId,
-        title: result.channelTitle,
-        access_token: result.accessToken,
-        refresh_token: result.refreshToken,
-        token_expires_at: result.expiresAt.toISOString(),
-        sync_status: 'syncing',
-      });
-
-      setYoutubeConnected(true);
-      setStep(2);
-
-      // Start initial sync in background
-      syncVideos(user.id, true).catch(console.error);
+      if (result === 'success') {
+        setYoutubeConnected(true);
+        setStep(2);
+      }
+      // 'web-redirect' navigates the tab away — nothing more to do here.
     } catch (error: any) {
-      Alert.alert('Connection Failed', error.message);
+      showAlert('Connection Failed', error.message ?? 'Please try again');
     } finally {
       setIsConnecting(false);
     }
@@ -65,15 +61,10 @@ export default function OnboardingScreen() {
   };
 
   const handleComplete = async () => {
-    if (!user) return;
-
-    try {
-      await updateCreatorProfile(user.id, { onboarding_completed: true });
-      updateProfile({ onboarding_completed: true });
-      router.replace('/(main)/chat');
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    }
+    // Local state only for now — persisting onboarding_completed to the
+    // backend isn't wired up yet (no PATCH /api/auth/me endpoint exists).
+    updateProfile({ onboarding_completed: true });
+    router.replace('/(main)/chat');
   };
 
   return (
