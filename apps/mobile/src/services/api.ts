@@ -318,3 +318,396 @@ export async function apiLogout(): Promise<void> {
   await storageRemove(ACCESS_TOKEN_KEY);
   await storageRemove(REFRESH_TOKEN_KEY);
 }
+
+// ============================================
+// RECOMMENDATIONS API
+// ============================================
+
+export interface BackendRecommendation {
+  type: 'task' | 'content' | 'sponsorship' | 'insight';
+  title: string;
+  description: string;
+  score: number;
+  urgency: number;
+  revenueImpact: number;
+  audienceImpact: number;
+  effort: number;
+  linkedId?: string;
+  action?: string;
+}
+
+export async function apiGetRecommendations(): Promise<BackendRecommendation[]> {
+  const resp = await apiFetch('/api/recommendations');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load recommendations');
+  }
+
+  return data.recommendations as BackendRecommendation[];
+}
+
+export async function apiGetTopRecommendation(): Promise<BackendRecommendation | null> {
+  const resp = await apiFetch('/api/recommendations/top');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load top recommendation');
+  }
+
+  return data.recommendation as BackendRecommendation | null;
+}
+
+// ============================================
+// BRIEFING API
+// ============================================
+
+export interface BackendPerformanceMetrics {
+  viewsChange: number;
+  watchTimeChange: number;
+  subscriberChange: number;
+  topPerformingVideo?: { title: string; views: number };
+  comparedToPrevious: 'up' | 'down' | 'stable';
+}
+
+export interface BackendOpportunity {
+  type: 'trend' | 'content_gap' | 'engagement' | 'timing';
+  title: string;
+  description: string;
+  potentialImpact: 'high' | 'medium' | 'low';
+}
+
+export interface BackendRisk {
+  type: 'deadline' | 'engagement_drop' | 'sponsor' | 'content_gap';
+  title: string;
+  description: string;
+  severity: 'high' | 'medium' | 'low';
+  dueDate?: string;
+}
+
+export interface BackendBriefing {
+  id: string;
+  creatorId: string;
+  date: string;
+  greeting: string;
+  summary: string;
+  priorities: string[];
+  insights: string[];
+  metrics: BackendPerformanceMetrics;
+  opportunities: BackendOpportunity[];
+  risks: BackendRisk[];
+  isRead: boolean;
+  createdAt: string;
+}
+
+export async function apiGetPerformanceMetrics(): Promise<BackendPerformanceMetrics> {
+  const resp = await apiFetch('/api/briefing/performance');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load performance metrics');
+  }
+
+  return data.metrics as BackendPerformanceMetrics;
+}
+
+export async function apiGetOpportunities(): Promise<BackendOpportunity[]> {
+  const resp = await apiFetch('/api/briefing/opportunities');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load opportunities');
+  }
+
+  return data.opportunities as BackendOpportunity[];
+}
+
+export async function apiGetRisks(): Promise<BackendRisk[]> {
+  const resp = await apiFetch('/api/briefing/risks');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load risks');
+  }
+
+  return data.risks as BackendRisk[];
+}
+
+export async function apiGetLatestBriefing(): Promise<BackendBriefing | null> {
+  const resp = await apiFetch('/api/briefing/latest');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    if (resp.status === 404) return null;
+    throw new Error(data.message || 'Failed to load briefing');
+  }
+
+  return data.briefing as BackendBriefing | null;
+}
+
+export async function apiGenerateBriefing(): Promise<BackendBriefing> {
+  const resp = await apiFetch('/api/briefing/generate', { method: 'POST' });
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to generate briefing');
+  }
+
+  return data.briefing as BackendBriefing;
+}
+
+export async function apiMarkBriefingRead(id: string): Promise<void> {
+  const resp = await apiFetch(`/api/briefing/${id}/read`, { method: 'POST' });
+
+  if (!resp.ok) {
+    const data = await resp.json();
+    throw new Error(data.message || 'Failed to mark briefing as read');
+  }
+}
+
+// ============================================
+// INSIGHTS API (Content Intelligence)
+// ============================================
+
+export interface BackendContentIdea {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  impactScore: number;
+  estimatedViews: string;
+  trendingScore: 'high' | 'medium' | 'low';
+  audienceMatch: number;
+  tags: string[];
+  outline?: string[];
+  source: 'ai' | 'trend' | 'comment' | 'manual';
+}
+
+export interface BackendTrend {
+  topic: string;
+  growthRate: number;
+  relevanceScore: number;
+  relatedVideos: string[];
+  suggestedAngle: string;
+}
+
+export interface BackendCommentInsight {
+  theme: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  frequency: number;
+  exampleComments: string[];
+  actionableSuggestion: string;
+}
+
+export interface BackendRepurposingSuggestion {
+  sourceVideoId: string;
+  sourceVideoTitle: string;
+  format: 'short' | 'blog' | 'twitter_thread' | 'carousel';
+  suggestion: string;
+  estimatedEffort: 'low' | 'medium' | 'high';
+}
+
+export async function apiGenerateIdeas(count = 5): Promise<BackendContentIdea[]> {
+  const resp = await apiFetch('/api/insights/ideas/generate', {
+    method: 'POST',
+    body: JSON.stringify({ count }),
+  });
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to generate ideas');
+  }
+
+  return data.ideas as BackendContentIdea[];
+}
+
+export async function apiGetTrends(): Promise<BackendTrend[]> {
+  const resp = await apiFetch('/api/insights/trends');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load trends');
+  }
+
+  return data.trends as BackendTrend[];
+}
+
+export async function apiMineComments(videoId: string, maxComments = 100): Promise<BackendCommentInsight[]> {
+  const resp = await apiFetch(`/api/insights/comments/${videoId}/mine`, {
+    method: 'POST',
+    body: JSON.stringify({ maxComments }),
+  });
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to mine comments');
+  }
+
+  return data.insights as BackendCommentInsight[];
+}
+
+export async function apiGetRepurposingSuggestions(limit = 5): Promise<BackendRepurposingSuggestion[]> {
+  const resp = await apiFetch(`/api/insights/repurposing?limit=${limit}`);
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load repurposing suggestions');
+  }
+
+  return data.suggestions as BackendRepurposingSuggestion[];
+}
+
+// ============================================
+// MEMORY API
+// ============================================
+
+export interface BackendMemoryEntry {
+  id: string;
+  key: string;
+  value: string;
+  confidence: number;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function apiGetMemory(): Promise<BackendMemoryEntry[]> {
+  const resp = await apiFetch('/api/memory');
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to load memory');
+  }
+
+  return data.memories as BackendMemoryEntry[];
+}
+
+export async function apiSaveMemory(key: string, value: string, source = 'user'): Promise<BackendMemoryEntry> {
+  const resp = await apiFetch('/api/memory', {
+    method: 'POST',
+    body: JSON.stringify({ key, value, source }),
+  });
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to save memory');
+  }
+
+  return data.memory as BackendMemoryEntry;
+}
+
+export async function apiQueryMemory(query: string): Promise<BackendMemoryEntry[]> {
+  const resp = await apiFetch(`/api/memory/query?q=${encodeURIComponent(query)}`);
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.message || 'Failed to query memory');
+  }
+
+  return data.memories as BackendMemoryEntry[];
+}
+
+// ============================================
+// CHAT API (SSE Streaming)
+// ============================================
+
+export interface ChatStreamEvent {
+  type: 'text' | 'tool_call' | 'tool_result' | 'done' | 'error';
+  content?: string;
+  toolName?: string;
+  toolArgs?: Record<string, unknown>;
+  toolResult?: unknown;
+  error?: string;
+}
+
+export interface ChatStreamOptions {
+  message: string;
+  conversationId?: string;
+  onText?: (text: string) => void;
+  onToolCall?: (name: string, args: Record<string, unknown>) => void;
+  onToolResult?: (result: unknown) => void;
+  onDone?: () => void;
+  onError?: (error: string) => void;
+}
+
+/**
+ * Streams a chat message to the agent and handles events via callbacks.
+ * Returns an AbortController to cancel the stream.
+ */
+export async function apiChatStream(options: ChatStreamOptions): Promise<AbortController> {
+  const controller = new AbortController();
+  const token = await storageGet(ACCESS_TOKEN_KEY);
+
+  const resp = await fetch(`${API_URL}/api/chat/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      message: options.message,
+      conversationId: options.conversationId,
+    }),
+    signal: controller.signal,
+  });
+
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}));
+    throw new Error(data.message || 'Chat request failed');
+  }
+
+  const reader = resp.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  (async () => {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event: ChatStreamEvent = JSON.parse(line.slice(6));
+
+              switch (event.type) {
+                case 'text':
+                  options.onText?.(event.content || '');
+                  break;
+                case 'tool_call':
+                  options.onToolCall?.(event.toolName || '', event.toolArgs || {});
+                  break;
+                case 'tool_result':
+                  options.onToolResult?.(event.toolResult);
+                  break;
+                case 'done':
+                  options.onDone?.();
+                  break;
+                case 'error':
+                  options.onError?.(event.error || 'Unknown error');
+                  break;
+              }
+            } catch {
+              // Ignore malformed events
+            }
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        options.onError?.(err.message);
+      }
+    }
+  })();
+
+  return controller;
+}

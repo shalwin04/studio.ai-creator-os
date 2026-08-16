@@ -2,9 +2,10 @@
  * AI Chat Screen
  *
  * Dark racing style: Matches dashboard layout with cards and bold design
+ * Uses SSE streaming for real-time agent responses.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +19,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Markdown from 'react-native-markdown-display';
 import { colors, spacing, typography, radius, layout, shadows } from '../../../src/theme';
+import { apiChatStream } from '../../../src/services/api';
+
+// Unique ID generator using random string
+const generateId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 11)}`;
 
 interface Message {
   id: string;
@@ -59,27 +65,90 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
+  const isSendingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const handleSend = useCallback((text?: string) => {
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const handleSend = useCallback(async (text?: string) => {
     const messageText = text || inputText.trim();
     if (!messageText) return;
 
-    const userMessage: Message = {
-      id: 'u' + Date.now(),
+    // Strict double-submission guard
+    if (isSendingRef.current) {
+      console.log('Blocked duplicate send');
+      return;
+    }
+    isSendingRef.current = true;
+
+    const visibleId = generateId('assistant');
+    let messageAdded = false; // Track if we've added the response
+
+    // Add user message
+    setMessages(prev => [...prev, {
+      id: generateId('user'),
       role: 'user',
       content: messageText,
-    };
-
-    setMessages(prev => [...prev, userMessage]);
+    }]);
     setInputText('');
     setIsTyping(true);
+    setStreamingText('');
 
-    setTimeout(() => {
-      const reply = generateReply(messageText);
-      setMessages(prev => [...prev, reply]);
-      setIsTyping(false);
-    }, 1200);
+    try {
+      let fullResponse = '';
+
+      abortRef.current = await apiChatStream({
+        message: messageText,
+        onText: (chunk) => {
+          fullResponse += chunk;
+          setStreamingText(fullResponse);
+        },
+        onDone: () => {
+          // Add final message only once
+          if (fullResponse && !messageAdded) {
+            messageAdded = true;
+            setMessages(prev => [...prev, {
+              id: visibleId,
+              role: 'assistant',
+              content: fullResponse,
+            }]);
+          }
+          setStreamingText('');
+          setIsTyping(false);
+          isSendingRef.current = false;
+        },
+        onError: (err) => {
+          console.log('Stream error, using fallback:', err);
+          if (!messageAdded) {
+            messageAdded = true;
+            useFallback(messageText, visibleId);
+          }
+        },
+      });
+    } catch (err) {
+      console.log('API error, using fallback:', err);
+      if (!messageAdded) {
+        messageAdded = true;
+        useFallback(messageText, visibleId);
+      }
+    }
+
+    function useFallback(msg: string, id: string) {
+      setTimeout(() => {
+        const reply = generateReply(msg, id);
+        setMessages(prev => [...prev, reply]);
+        setStreamingText('');
+        setIsTyping(false);
+        isSendingRef.current = false;
+      }, 600);
+    }
   }, [inputText]);
 
   return (
@@ -146,9 +215,10 @@ export default function ChatScreen() {
                   {SUGGESTIONS.map((suggestion) => (
                     <TouchableOpacity
                       key={suggestion.id}
-                      style={styles.suggestionCard}
+                      style={[styles.suggestionCard, isTyping && styles.suggestionDisabled]}
                       onPress={() => handleSend(suggestion.text)}
                       activeOpacity={0.7}
+                      disabled={isTyping}
                     >
                       <View style={styles.suggestionIcon}>
                         <SuggestionIcon type={suggestion.icon} />
@@ -161,24 +231,32 @@ export default function ChatScreen() {
             )}
 
             {/* Messages */}
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+            {messages.map((message, index) => (
+              <MessageBubble
+                key={`${index}-${message.id}`}
+                message={message}
+                onFollowUp={handleSend}
+              />
             ))}
 
-            {/* Typing Indicator */}
+            {/* Typing Indicator / Streaming Text */}
             {isTyping && (
-              <View style={styles.typingContainer}>
-                <View style={styles.typingAvatar}>
+              <View style={styles.assistantContainer}>
+                <View style={styles.assistantAvatar}>
                   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.lime} strokeWidth={1.5}>
                     <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                   </Svg>
                 </View>
-                <View style={styles.typingBubble}>
-                  <View style={styles.typingDots}>
-                    <View style={[styles.typingDot, { opacity: 0.4 }]} />
-                    <View style={[styles.typingDot, { opacity: 0.6 }]} />
-                    <View style={[styles.typingDot, { opacity: 0.8 }]} />
-                  </View>
+                <View style={styles.assistantBubble}>
+                  {streamingText ? (
+                    <Text style={styles.assistantText}>{streamingText}▌</Text>
+                  ) : (
+                    <View style={styles.typingDots}>
+                      <View style={[styles.typingDot, { opacity: 0.4 }]} />
+                      <View style={[styles.typingDot, { opacity: 0.6 }]} />
+                      <View style={[styles.typingDot, { opacity: 0.8 }]} />
+                    </View>
+                  )}
                 </View>
               </View>
             )}
@@ -222,7 +300,116 @@ export default function ChatScreen() {
 // MESSAGE BUBBLE
 // ============================================
 
-function MessageBubble({ message }: { message: Message }) {
+// Markdown styles for dark theme
+const markdownStyles = StyleSheet.create({
+  body: {
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  heading1: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  heading2: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  heading3: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  strong: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  em: {
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  bullet_list: {
+    marginVertical: 4,
+  },
+  ordered_list: {
+    marginVertical: 4,
+  },
+  list_item: {
+    marginVertical: 2,
+  },
+  code_inline: {
+    backgroundColor: colors.surface,
+    color: colors.lime,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 13,
+  },
+  fence: {
+    backgroundColor: colors.surface,
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  code_block: {
+    color: colors.lime,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 13,
+  },
+  link: {
+    color: colors.accent,
+    textDecorationLine: 'underline',
+  },
+  blockquote: {
+    backgroundColor: colors.surface,
+    borderLeftColor: colors.lime,
+    borderLeftWidth: 3,
+    paddingLeft: 12,
+    paddingVertical: 4,
+    marginVertical: 8,
+  },
+});
+
+// Extract follow-up questions from text (lines starting with - or * or numbered)
+function extractFollowUpQuestions(text: string): string[] {
+  const lines = text.split('\n');
+  const questions: string[] = [];
+  let inFollowUpSection = false;
+
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    if (lower.includes('follow-up') || lower.includes('follow up') || lower.includes('you might ask') || lower.includes('questions you')) {
+      inFollowUpSection = true;
+      continue;
+    }
+    if (inFollowUpSection) {
+      const match = line.match(/^[\s]*[-*•]\s*(.+)/) || line.match(/^[\s]*\d+[.)]\s*(.+)/);
+      if (match) {
+        const question = match[1].replace(/\*\*/g, '').replace(/\?.*$/, '?').trim();
+        if (question.length > 5 && question.includes('?')) {
+          questions.push(question);
+        }
+      }
+    }
+  }
+  return questions.slice(0, 3); // Max 3 follow-up questions
+}
+
+interface MessageBubbleProps {
+  message: Message;
+  onFollowUp?: (question: string) => void;
+}
+
+function MessageBubble({ message, onFollowUp }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   if (isUser) {
@@ -235,6 +422,8 @@ function MessageBubble({ message }: { message: Message }) {
     );
   }
 
+  const followUpQuestions = extractFollowUpQuestions(message.content);
+
   return (
     <View style={styles.assistantContainer}>
       <View style={styles.assistantAvatar}>
@@ -243,7 +432,28 @@ function MessageBubble({ message }: { message: Message }) {
         </Svg>
       </View>
       <View style={styles.assistantBubble}>
-        <Text style={styles.assistantText}>{message.content}</Text>
+        <Markdown style={markdownStyles}>{message.content}</Markdown>
+
+        {/* Follow-up questions */}
+        {followUpQuestions.length > 0 && onFollowUp && (
+          <View style={styles.followUpContainer}>
+            <Text style={styles.followUpLabel}>Quick follow-ups:</Text>
+            {followUpQuestions.map((q, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.followUpButton}
+                onPress={() => onFollowUp(q)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.followUpText}>{q}</Text>
+                <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.lime} strokeWidth={2}>
+                  <Path d="M5 12h14M12 5l7 7-7 7" />
+                </Svg>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {message.card && (
           <TouchableOpacity style={styles.actionCard} activeOpacity={0.8}>
             <View style={styles.cardHeader}>
@@ -308,12 +518,13 @@ function SuggestionIcon({ type }: { type: string }) {
 // HELPERS
 // ============================================
 
-function generateReply(input: string): Message {
+function generateReply(input: string, id?: string): Message {
+  const messageId = id || generateId('assistant');
   const lower = input.toLowerCase();
 
   if (lower.includes('focus') || lower.includes('priorit')) {
     return {
-      id: 'a' + Date.now(),
+      id: messageId,
       role: 'assistant',
       content: 'Based on deadline and revenue impact, this is your top priority:',
       card: {
@@ -328,7 +539,7 @@ function generateReply(input: string): Message {
 
   if (lower.includes('channel') || lower.includes('analytic') || lower.includes('doing')) {
     return {
-      id: 'a' + Date.now(),
+      id: messageId,
       role: 'assistant',
       content: 'Your channel had strong growth this week:',
       card: {
@@ -343,7 +554,7 @@ function generateReply(input: string): Message {
 
   if (lower.includes('idea') || lower.includes('content') || lower.includes('video')) {
     return {
-      id: 'a' + Date.now(),
+      id: messageId,
       role: 'assistant',
       content: "Here are trending ideas based on your audience:",
       card: {
@@ -358,7 +569,7 @@ function generateReply(input: string): Message {
 
   if (lower.includes('schedule') || lower.includes('upcoming') || lower.includes('calendar')) {
     return {
-      id: 'a' + Date.now(),
+      id: messageId,
       role: 'assistant',
       content: "Here's what's on your schedule:",
       card: {
@@ -372,7 +583,7 @@ function generateReply(input: string): Message {
   }
 
   return {
-    id: 'a' + Date.now(),
+    id: messageId,
     role: 'assistant',
     content: 'I can help with analytics, content planning, deals, and tasks. What would you like to explore?',
   };
@@ -489,6 +700,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
   },
+  suggestionDisabled: {
+    opacity: 0.5,
+  },
   suggestionIcon: {
     width: 36,
     height: 36,
@@ -546,6 +760,36 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.text,
     marginBottom: 12,
+  },
+
+  // Follow-up Questions
+  followUpContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+    gap: 8,
+  },
+  followUpLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    marginBottom: 4,
+  },
+  followUpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  followUpText: {
+    fontSize: 13,
+    color: colors.text,
+    flex: 1,
+    marginRight: 8,
   },
 
   // Action Card

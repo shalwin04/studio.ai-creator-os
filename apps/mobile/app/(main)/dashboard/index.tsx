@@ -21,9 +21,13 @@ import {
   apiGetYoutubeChannel,
   apiGetYoutubeVideos,
   apiGetYoutubeAnalytics,
+  apiGetTopRecommendation,
+  apiGetLatestBriefing,
   BackendYoutubeChannel,
   BackendYoutubeVideo,
   BackendChannelAnalyticsPoint,
+  BackendRecommendation,
+  BackendBriefing,
 } from '../../../src/services/api';
 import { startYoutubeConnect } from '../../../src/services/youtube';
 import { showAlert } from '../../../src/utils/alert';
@@ -51,19 +55,25 @@ export default function DashboardScreen() {
   const [channel, setChannel] = useState<BackendYoutubeChannel | null>(null);
   const [videos, setVideos] = useState<BackendYoutubeVideo[]>([]);
   const [analytics, setAnalytics] = useState<BackendChannelAnalyticsPoint[]>([]);
+  const [topRecommendation, setTopRecommendation] = useState<BackendRecommendation | null>(null);
+  const [latestBriefing, setLatestBriefing] = useState<BackendBriefing | null>(null);
   const router = useRouter();
   const profile = useCreatorStore((state) => state.profile);
 
   const loadData = useCallback(async () => {
     try {
-      const [channelData, videosData, analyticsData] = await Promise.all([
+      const [channelData, videosData, analyticsData, recommendation, briefing] = await Promise.all([
         apiGetYoutubeChannel(),
         apiGetYoutubeVideos(),
         apiGetYoutubeAnalytics(),
+        apiGetTopRecommendation().catch(() => null),
+        apiGetLatestBriefing().catch(() => null),
       ]);
       setChannel(channelData);
       setVideos(videosData);
       setAnalytics(analyticsData);
+      setTopRecommendation(recommendation);
+      setLatestBriefing(briefing);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     }
@@ -222,6 +232,73 @@ export default function DashboardScreen() {
                   </View>
                 </LinearGradient>
               </View>
+
+              {/* Top Priority Card */}
+              {topRecommendation && (
+                <TouchableOpacity style={styles.priorityCard} activeOpacity={0.9}>
+                  <View style={styles.priorityHeader}>
+                    <View style={styles.priorityBadge}>
+                      <Svg width={12} height={12} viewBox="0 0 24 24" fill={colors.orange} stroke={colors.orange} strokeWidth={2}>
+                        <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </Svg>
+                      <Text style={styles.priorityLabel}>TOP PRIORITY</Text>
+                    </View>
+                    <View style={styles.impactBadge}>
+                      <Text style={styles.impactScore}>{Math.round(topRecommendation.score)}</Text>
+                      <Text style={styles.impactLabel}>Impact</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.priorityTitle} numberOfLines={2}>
+                    {topRecommendation.title}
+                  </Text>
+                  <Text style={styles.priorityDescription} numberOfLines={2}>
+                    {topRecommendation.description}
+                  </Text>
+                  <View style={styles.priorityMeta}>
+                    <View style={[styles.priorityTag, { backgroundColor: `${colors.lime}20` }]}>
+                      <Text style={[styles.priorityTagText, { color: colors.lime }]}>
+                        {topRecommendation.type}
+                      </Text>
+                    </View>
+                    {topRecommendation.urgency > 0.7 && (
+                      <View style={[styles.priorityTag, { backgroundColor: `${colors.orange}20` }]}>
+                        <Text style={[styles.priorityTagText, { color: colors.orange }]}>
+                          Urgent
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Daily Briefing Card */}
+              {latestBriefing && !latestBriefing.isRead && (
+                <TouchableOpacity style={styles.briefingCard} activeOpacity={0.9}>
+                  <LinearGradient
+                    colors={['#1A2F4A', '#0D1B2A']}
+                    style={styles.briefingGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <View style={styles.briefingHeader}>
+                      <View style={styles.briefingIcon}>
+                        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.teal} strokeWidth={2}>
+                          <Path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                          <Path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                        </Svg>
+                      </View>
+                      <Text style={styles.briefingLabel}>Daily Briefing</Text>
+                      <View style={styles.newBadge}>
+                        <Text style={styles.newBadgeText}>NEW</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.briefingSummary} numberOfLines={2}>
+                      {latestBriefing.summary}
+                    </Text>
+                    <Text style={styles.briefingCta}>Tap to read full briefing →</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
             </>
           )}
 
@@ -481,6 +558,135 @@ const styles = StyleSheet.create({
   heroStatLabel: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+
+  // Priority Card
+  priorityCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.orange,
+  },
+  priorityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  priorityLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: colors.orange,
+  },
+  impactBadge: {
+    alignItems: 'center',
+    backgroundColor: `${colors.lime}15`,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.md,
+  },
+  impactScore: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.lime,
+  },
+  impactLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+  },
+  priorityTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  priorityDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  priorityMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  priorityTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+  },
+  priorityTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  priorityDeadline: {
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
+
+  // Briefing Card
+  briefingCard: {
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  briefingGradient: {
+    padding: 16,
+  },
+  briefingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  briefingIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.teal}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  briefingLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    flex: 1,
+  },
+  newBadge: {
+    backgroundColor: colors.teal,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  newBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.background,
+  },
+  briefingSummary: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  briefingCta: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.teal,
   },
 
   // Progress Section
