@@ -9,7 +9,7 @@ import { eq, and } from 'drizzle-orm';
 import { env } from '../../lib/env.js';
 import { getDb } from '../../lib/database.js';
 import { getRedis } from '../../lib/redis.js';
-import { creators, youtubeChannels, youtubeVideos, videoAnalytics } from '../../db/schema.js';
+import { creators, youtubeChannels, youtubeVideos, videoAnalytics, youtubeComments } from '../../db/schema.js';
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -71,6 +71,15 @@ export interface VideoData {
   viewCount: number;
   likeCount: number;
   commentCount: number;
+}
+
+export interface CommentData {
+  commentId: string;
+  authorName: string;
+  text: string;
+  likeCount: number;
+  replyCount: number;
+  publishedAt: Date;
 }
 
 export interface ChannelData {
@@ -556,11 +565,92 @@ export class YouTubeService {
   }
 
   /**
-   * Fetch video comments
+   * Fetch and persist top-level comments for a video (for comment mining).
+   * `videoId` is our internal UUID; the YouTube video ID is looked up from it.
    */
-  async fetchComments(videoId: string, maxResults: number = 100): Promise<any[]> {
-    // TODO: Fetch comments for analysis (Suba's comment mining)
-    return [];
+  async fetchComments(videoId: string, maxResults: number = 100): Promise<CommentData[]> {
+    await this.ensureTokens();
+
+    const db = getDb();
+    const video = await db.query.youtubeVideos.findFirst({
+      where: eq(youtubeVideos.id, videoId),
+    });
+    if (!video) return [];
+
+    const results: CommentData[] = [];
+    let pageToken: string | undefined;
+
+    while (results.length < maxResults) {
+      const pageSize = Math.min(100, maxResults - results.length);
+      let url =
+        `${API_BASE}/commentThreads?part=snippet&videoId=${video.videoId}` +
+        `&order=relevance&maxResults=${pageSize}&textFormat=plainText`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+
+      const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${this.tokens!.accessToken}` },
+      });
+
+      if (!resp.ok) {
+        // Comments can be disabled for a video — skip rather than fail the whole call.
+        if (resp.status === 403) break;
+        throw new Error(`Failed to fetch comments: ${resp.status} ${await resp.text()}`);
+      }
+
+      const data = (await resp.json()) as {
+        items?: Array<{
+          id: string;
+          snippet: {
+            topLevelComment: {
+              snippet: {
+                authorDisplayName: string;
+                textOriginal: string;
+                likeCount: number;
+                publishedAt: string;
+              };
+            };
+            totalReplyCount: number;
+          };
+        }>;
+        nextPageToken?: string;
+      };
+
+      for (const item of data.items ?? []) {
+        const snippet = item.snippet.topLevelComment.snippet;
+        const values = {
+          videoId,
+          authorName: snippet.authorDisplayName,
+          text: snippet.textOriginal,
+          likeCount: snippet.likeCount ?? 0,
+          replyCount: item.snippet.totalReplyCount ?? 0,
+          publishedAt: new Date(snippet.publishedAt),
+        };
+
+        const existing = await db.query.youtubeComments.findFirst({
+          where: eq(youtubeComments.commentId, item.id),
+        });
+
+        if (existing) {
+          await db.update(youtubeComments).set(values).where(eq(youtubeComments.id, existing.id));
+        } else {
+          await db.insert(youtubeComments).values({ commentId: item.id, ...values });
+        }
+
+        results.push({
+          commentId: item.id,
+          authorName: values.authorName,
+          text: values.text,
+          likeCount: values.likeCount,
+          replyCount: values.replyCount,
+          publishedAt: values.publishedAt,
+        });
+      }
+
+      pageToken = data.nextPageToken;
+      if (!pageToken) break;
+    }
+
+    return results;
   }
 
   /**

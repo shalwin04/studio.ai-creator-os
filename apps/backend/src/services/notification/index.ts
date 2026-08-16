@@ -4,7 +4,10 @@
  * Push notification management via Expo.
  */
 
+import { eq, inArray } from 'drizzle-orm';
 import { env } from '../../lib/env.js';
+import { getDb } from '../../lib/database.js';
+import { creators, proactiveNotifications } from '../../db/schema.js';
 
 export interface PushNotification {
   to: string; // Expo push token
@@ -23,6 +26,8 @@ export interface NotificationPayload {
   data?: Record<string, any>;
 }
 
+const EXPO_BATCH_SIZE = 100;
+
 export class NotificationService {
   private creatorId: string;
   private expoUrl = 'https://exp.host/--/api/v2/push/send';
@@ -38,6 +43,7 @@ export class NotificationService {
     const token = await this.getExpoPushToken();
     if (!token) {
       console.log('No push token registered for creator:', this.creatorId);
+      await this.logNotification(this.creatorId, payload);
       return;
     }
 
@@ -53,8 +59,8 @@ export class NotificationService {
       priority: this.getPriority(payload.type),
     };
 
-    await this.sendToExpo(notification);
-    await this.logNotification(payload);
+    await this.sendToExpo([notification]);
+    await this.logNotification(this.creatorId, payload);
   }
 
   /**
@@ -63,7 +69,38 @@ export class NotificationService {
   async sendBatch(
     payloads: { creatorId: string; payload: NotificationPayload }[]
   ): Promise<void> {
-    // TODO: Batch send notifications
+    if (payloads.length === 0) return;
+
+    const db = getDb();
+    const creatorIds = [...new Set(payloads.map((p) => p.creatorId))];
+    const rows = await db
+      .select({ id: creators.id, expoPushToken: creators.expoPushToken })
+      .from(creators)
+      .where(inArray(creators.id, creatorIds));
+    const tokenByCreator = new Map(rows.map((r) => [r.id, r.expoPushToken]));
+
+    const notifications: PushNotification[] = [];
+    for (const { creatorId, payload } of payloads) {
+      const token = tokenByCreator.get(creatorId);
+      if (!token) {
+        console.log('No push token registered for creator:', creatorId);
+        continue;
+      }
+      notifications.push({
+        to: token,
+        title: payload.title,
+        body: payload.body,
+        data: { type: payload.type, ...payload.data },
+        sound: 'default',
+        priority: this.getPriority(payload.type),
+      });
+    }
+
+    for (let i = 0; i < notifications.length; i += EXPO_BATCH_SIZE) {
+      await this.sendToExpo(notifications.slice(i, i + EXPO_BATCH_SIZE));
+    }
+
+    await Promise.all(payloads.map(({ creatorId, payload }) => this.logNotification(creatorId, payload)));
   }
 
   /**
@@ -103,8 +140,11 @@ export class NotificationService {
   }
 
   private async getExpoPushToken(): Promise<string | null> {
-    // TODO: Fetch from creators table
-    return null;
+    const db = getDb();
+    const creator = await db.query.creators.findFirst({
+      where: eq(creators.id, this.creatorId),
+    });
+    return creator?.expoPushToken ?? null;
   }
 
   private getPriority(type: string): 'default' | 'normal' | 'high' {
@@ -119,8 +159,8 @@ export class NotificationService {
     }
   }
 
-  private async sendToExpo(notification: PushNotification): Promise<void> {
-    // TODO: Send via Expo API
+  private async sendToExpo(notifications: PushNotification[]): Promise<void> {
+    if (notifications.length === 0) return;
     if (!env.EXPO_ACCESS_TOKEN) {
       console.log('Expo token not configured, skipping push');
       return;
@@ -132,7 +172,7 @@ export class NotificationService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${env.EXPO_ACCESS_TOKEN}`,
       },
-      body: JSON.stringify(notification),
+      body: JSON.stringify(notifications),
     });
 
     if (!response.ok) {
@@ -140,7 +180,14 @@ export class NotificationService {
     }
   }
 
-  private async logNotification(payload: NotificationPayload): Promise<void> {
-    // TODO: Save to proactive_notifications table
+  private async logNotification(creatorId: string, payload: NotificationPayload): Promise<void> {
+    const db = getDb();
+    await db.insert(proactiveNotifications).values({
+      creatorId,
+      type: payload.type,
+      title: payload.title,
+      body: payload.body,
+      data: payload.data ?? {},
+    });
   }
 }
