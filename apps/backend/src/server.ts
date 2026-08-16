@@ -16,6 +16,10 @@ import { taskRoutes } from './api/tasks/index.js';
 import { contentRoutes } from './api/content/index.js';
 import { youtubeRoutes } from './api/youtube/index.js';
 import { webhookRoutes } from './api/webhooks/index.js';
+import { memoryRoutes } from './api/memory/index.js';
+import { recommendationRoutes } from './api/recommendations/index.js';
+import { briefingRoutes } from './api/briefing/index.js';
+import { insightsRoutes } from './api/insights/index.js';
 
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -64,6 +68,10 @@ async function bootstrap() {
   await server.register(contentRoutes, { prefix: '/api/content' });
   await server.register(youtubeRoutes, { prefix: '/api/youtube' });
   await server.register(webhookRoutes, { prefix: '/api/webhooks' });
+  await server.register(memoryRoutes, { prefix: '/api/memory' });
+  await server.register(recommendationRoutes, { prefix: '/api/recommendations' });
+  await server.register(briefingRoutes, { prefix: '/api/briefing' });
+  await server.register(insightsRoutes, { prefix: '/api/insights' });
 
   // Initialize infrastructure
   await initDatabase();

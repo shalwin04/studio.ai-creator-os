@@ -36,6 +36,27 @@
       "when": 1786712885867,
       "tag": "0004_simple_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786838238651,
+      "tag": "0005_pgvector_agent_memory",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786839417990,
+      "tag": "0006_awesome_nomad",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786839952665,
+      "tag": "0007_tan_chimera",
+      "breakpoints": true
     }
   ]
 }

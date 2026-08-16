@@ -8,7 +8,7 @@ import { Worker, Job } from 'bullmq';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { getRedis } from '../lib/redis.js';
 import { getDb } from '../lib/database.js';
-import { youtubeSyncQueue } from '../lib/queue.js';
+import { youtubeSyncQueue, briefingQueue, impactScoreQueue, notificationQueue } from '../lib/queue.js';
 import { creators } from '../db/schema.js';
 import { YouTubeService } from '../services/youtube/index.js';
 import { BriefingService } from '../services/briefing/index.js';
@@ -46,7 +46,16 @@ export async function startWorkers() {
       } else {
         const { creatorId } = job.data;
         const service = new BriefingService(creatorId);
-        await service.generate();
+        const briefing = await service.generate();
+        await notificationQueue.add('send-notification', {
+          creatorId,
+          payload: {
+            type: 'briefing',
+            title: 'Good morning! Your daily briefing is ready',
+            body: 'Tap to see your priorities for today',
+            data: { briefingId: briefing.id },
+          },
+        });
       }
     },
     { connection }
@@ -102,11 +111,23 @@ async function syncAllCreators() {
 }
 
 async function generateAllBriefings() {
-  // TODO: Get all creators and queue individual briefing jobs
-  console.log('Generating all briefings...');
+  const db = getDb();
+  const allCreators = await db.select({ id: creators.id }).from(creators);
+
+  console.log(`Queuing briefing generation for ${allCreators.length} creator(s)...`);
+
+  for (const creator of allCreators) {
+    await briefingQueue.add('generate-briefing', { creatorId: creator.id });
+  }
 }
 
 async function calculateAllImpactScores() {
-  // TODO: Get all creators and queue individual impact score jobs
-  console.log('Calculating all impact scores...');
+  const db = getDb();
+  const allCreators = await db.select({ id: creators.id }).from(creators);
+
+  console.log(`Queuing impact score calculation for ${allCreators.length} creator(s)...`);
+
+  for (const creator of allCreators) {
+    await impactScoreQueue.add('calculate-scores', { creatorId: creator.id });
+  }
 }

@@ -127,6 +127,20 @@ export const videoAnalytics = pgTable('video_analytics', {
   videoDateIdx: uniqueIndex('idx_video_analytics_video_date').on(table.videoId, table.date),
 }));
 
+export const youtubeComments = pgTable('youtube_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  videoId: uuid('video_id').notNull().references(() => youtubeVideos.id),
+  commentId: text('comment_id').notNull().unique(),
+  authorName: text('author_name'),
+  text: text('text').notNull(),
+  likeCount: integer('like_count').default(0),
+  replyCount: integer('reply_count').default(0),
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  videoIdIdx: index('idx_youtube_comments_video_id').on(table.videoId),
+}));
+
 // ============ TASKS ============
 
 export const tasks = pgTable('tasks', {
@@ -288,6 +302,21 @@ export const dailyBriefings = pgTable('daily_briefings', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ============ NOTIFICATIONS ============
+
+export const proactiveNotifications = pgTable('proactive_notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  creatorId: uuid('creator_id').notNull().references(() => creators.id),
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  data: jsonb('data'),
+  sentAt: timestamp('sent_at').defaultNow(),
+  readAt: timestamp('read_at'),
+}, (table) => ({
+  creatorIdIdx: index('idx_proactive_notifications_creator_id').on(table.creatorId),
+}));
+
 // ============ RELATIONS ============
 
 export const creatorsRelations = relations(creators, ({ many }) => ({
@@ -314,6 +343,14 @@ export const youtubeVideosRelations = relations(youtubeVideos, ({ one, many }) =
     references: [youtubeChannels.id],
   }),
   analytics: many(videoAnalytics),
+  comments: many(youtubeComments),
+}));
+
+export const youtubeCommentsRelations = relations(youtubeComments, ({ one }) => ({
+  video: one(youtubeVideos, {
+    fields: [youtubeComments.videoId],
+    references: [youtubeVideos.id],
+  }),
 }));
 
 export const videoAnalyticsRelations = relations(videoAnalytics, ({ one }) => ({

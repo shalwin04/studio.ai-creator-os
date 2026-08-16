@@ -7,7 +7,7 @@
 import { StateGraph, Annotation, START, END } from '@langchain/langgraph';
 import { MemoryService } from './memory/index.js';
 import { ToolRegistry } from './tools/index.js';
-import { claude } from '../../lib/llm.js';
+import { gemini } from '../../lib/llm.js';
 
 // Agent state definition
 const AgentState = Annotation.Root({
@@ -98,13 +98,56 @@ export class AgentOrchestrator {
       conversationId: this.conversationId,
     };
 
-    // TODO: Implement full agent flow
-    // For now, simple echo response
+    try {
+      // Try to build context, but don't fail if it errors
+      let contextInfo = '';
+      try {
+        const context = await this.memoryService.retrieveContext(message, { limit: 5 });
+        if (context.relevantMemories.length > 0) {
+          contextInfo += `Relevant memories:\n${context.relevantMemories.map(m => `- ${m.content}`).join('\n')}\n`;
+        }
+        if (context.creatorState?.profile) {
+          contextInfo += `Creator: ${context.creatorState.profile.displayName || 'Unknown'}\n`;
+        }
+        if (context.youtubeContext?.channel) {
+          contextInfo += `Channel: ${context.youtubeContext.channel.title} (${context.youtubeContext.channel.subscriberCount || 0} subscribers)\n`;
+        }
+      } catch (contextError) {
+        console.warn('Failed to retrieve context, continuing without it:', contextError);
+      }
 
-    yield {
-      type: 'text',
-      content: `Processing: "${message}"`,
-    };
+      // Generate response using Gemini
+      const systemPrompt = `You are an AI assistant for YouTube creators. You help them manage their channel, content, analytics, sponsorships, and daily workflow. Be helpful, concise, and actionable.
+
+${contextInfo}`;
+
+      const response = await gemini.invoke([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ]);
+
+      // Stream the response text
+      const text = typeof response.content === 'string'
+        ? response.content
+        : response.content.map((c: any) => c.text || '').join('');
+
+      // Yield text in chunks for streaming effect
+      const words = text.split(' ');
+      for (let i = 0; i < words.length; i++) {
+        yield {
+          type: 'text',
+          content: words[i] + (i < words.length - 1 ? ' ' : ''),
+        };
+        // Small delay for streaming effect
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+    } catch (error) {
+      console.error('Agent error:', error);
+      yield {
+        type: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
 
     yield {
       type: 'done',
