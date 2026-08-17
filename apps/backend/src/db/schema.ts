@@ -302,6 +302,55 @@ export const dailyBriefings = pgTable('daily_briefings', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ============ WORKFLOWS ============
+
+export const workflows = pgTable('workflows', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  creatorId: uuid('creator_id').notNull().references(() => creators.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  // Ordered list of { tool: string, args: Record<string, any> } steps, executed
+  // sequentially through the agent's ToolRegistry. `{{stepN.field}}` in an arg
+  // value is resolved against the output of a previous step at execution time.
+  steps: jsonb('steps').notNull(),
+  triggerPhrase: text('trigger_phrase'),
+  isActive: boolean('is_active').default(true),
+  lastRunAt: timestamp('last_run_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  creatorIdIdx: index('idx_workflows_creator_id').on(table.creatorId),
+}));
+
+export const workflowRuns = pgTable('workflow_runs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  workflowId: uuid('workflow_id').notNull().references(() => workflows.id),
+  creatorId: uuid('creator_id').notNull().references(() => creators.id),
+  status: text('status').notNull().default('running'),
+  stepResults: jsonb('step_results'),
+  error: text('error'),
+  triggeredBy: text('triggered_by').default('manual'),
+  startedAt: timestamp('started_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+}, (table) => ({
+  workflowIdIdx: index('idx_workflow_runs_workflow_id').on(table.workflowId),
+}));
+
+export const workflowsRelations = relations(workflows, ({ one, many }) => ({
+  creator: one(creators, {
+    fields: [workflows.creatorId],
+    references: [creators.id],
+  }),
+  runs: many(workflowRuns),
+}));
+
+export const workflowRunsRelations = relations(workflowRuns, ({ one }) => ({
+  workflow: one(workflows, {
+    fields: [workflowRuns.workflowId],
+    references: [workflows.id],
+  }),
+}));
+
 // ============ NOTIFICATIONS ============
 
 export const proactiveNotifications = pgTable('proactive_notifications', {

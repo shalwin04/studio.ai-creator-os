@@ -20,6 +20,7 @@ import { memoryRoutes } from './api/memory/index.js';
 import { recommendationRoutes } from './api/recommendations/index.js';
 import { briefingRoutes } from './api/briefing/index.js';
 import { insightsRoutes } from './api/insights/index.js';
+import { workflowRoutes } from './api/workflows/index.js';
 
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -72,6 +73,7 @@ async function bootstrap() {
   await server.register(recommendationRoutes, { prefix: '/api/recommendations' });
   await server.register(briefingRoutes, { prefix: '/api/briefing' });
   await server.register(insightsRoutes, { prefix: '/api/insights' });
+  await server.register(workflowRoutes, { prefix: '/api/workflows' });
 
   // Initialize infrastructure
   await initDatabase();
